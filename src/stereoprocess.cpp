@@ -43,6 +43,8 @@ DEFINE_string(write_keypoint,           "",             "Full file path to write
 
 DEFINE_bool(visualize,                  false,          "Visualize keypoints");
 
+DEFINE_bool(show_error,                 false,           "Show the reprojection error on terminal");
+
 
 void splitVertically(const cv::Mat & input, cv::Mat & outputleft, cv::Mat & outputright)
 {
@@ -491,12 +493,14 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
     return;
   }
   
+  /*
   std::cout << "points to be projected " << std::endl;
   std::cout << pnts << std::endl;
   std::cout << "intrinsics left" << std::endl;
   std::cout << cam_.intrinsics_left_ << std::endl;
   std::cout << "intrinsics right" << std::endl;
   std::cout << cam_.intrinsics_right_ << std::endl;
+  */
 
   std::vector<cv::Point2d> points2D(pnts.cols);
 
@@ -550,7 +554,7 @@ double StereoPoseExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnt
   }
   else
   {
-    cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cam_.ST_,cam_.intrinsics_right_,cam_.dist_right_,points2D);
+    cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(cam_.ST_[0],0,0),cam_.intrinsics_right_,cam_.dist_right_,points2D);
   }
 
 
@@ -567,6 +571,11 @@ double StereoPoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & 
   process();
  
   double error = triangulate(points3D);
+
+  if( FLAGS_show_error)
+  {
+    std::cout << "Reprojection error: " << error << std::endl;
+  }
 
   if(ver)
   {

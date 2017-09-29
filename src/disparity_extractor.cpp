@@ -1,5 +1,6 @@
 #include "stereoprocess.h"
 #include "utilities.hpp"
+#include <math.h>
 
 void DisparityExtractor::getDisparity()
 { 
@@ -91,8 +92,6 @@ double DisparityExtractor::triangulate(cv::Mat & output)
 
   output = cv::Mat(1,cam0pnts.cols,CV_64FC3);
 
-  //TODO: be sure that depth measures are exact if disparity is taken 
-
   for(int i=0; i < cam0pnts.cols; i++)
   {
 
@@ -104,15 +103,32 @@ double DisparityExtractor::triangulate(cv::Mat & output)
 
     cv::Point3d p3 = getPointFromDisp(p[0],p[1],disparity_point);
 
-    std::cout << "Point " << p3 << std::endl;
     output.at<cv::Point3d>(0,i) = p3;
   }
 
+  std::vector<cv::Point3d> output_nInf;
+  std::vector<cv::Point2d> cam1pnts_nInf;
 
-  //TODO: get the error (project the point3D in camera right)
+  //Before getting the error, remove the points with infinite depth 
+  for (int i = 0; i < output.cols; i++)
+  {
+    cv::Point3d point = output.at<cv::Point3d>(0,i);
+    cv::Point2d p2d = cam1pnts.at<cv::Point2d>(0,i);
 
-  std::cout << "Error: " << getRMS(cam0pnts, output, false) << std::endl;
-  return getRMS(cam0pnts,output, false);
+    if( !std::isinf(point.x) && !std::isinf(point.y) && !std::isinf(point.z))
+    {
+      output_nInf.push_back(point);
+      cam1pnts_nInf.push_back(p2d);
+    }
+  }
+
+  output = cv::Mat(output_nInf);
+  cam1pnts = cv::Mat(cam1pnts_nInf);
+
+  cv::transpose(output, output);
+  cv::transpose(cam1pnts, cam1pnts);
+
+  return getRMS(cam1pnts,output, false);
 }
 
 
