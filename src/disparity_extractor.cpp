@@ -25,11 +25,13 @@ cv::Point3d DisparityExtractor::getPointFromDisp(double u, double v, double d)
 {
 
   double f = cam_.intrinsics_left_.at<double>(0,0);
+  double cx = cam_.intrinsics_left_.at<double>(0,2);
+  double cy = cam_.intrinsics_left_.at<double>(1,2);
   double b = -cam_.ST_[0];
 
   double Z = (f * b)/d;
-  double X = (u * Z)/f;
-  double Y = (v * Z)/f;
+  double X = ((u - cx) * Z)/f;
+  double Y = ((v - cy) * Z)/f;
 
   return cv::Point3d(X,Y,Z);
 
@@ -95,10 +97,13 @@ double DisparityExtractor::triangulate(cv::Mat & output)
   {
 
     cv::Vec2d p = cam0pnts.at<cv::Vec2d>(0,i);
+    //disparity at the considered pixel 
     double dispatpoint = (double)disp.at<uint16_t>(cvRound(p[0]),cvRound(p[1]));
-    double disparity_point = maxDisp(disp,cvRound(p[0]),cvRound(p[1]),5);
-    std::cout << "Disparity " << disparity_point << std::endl;
+    //disparity in the neighbouroud
+    double disparity_point = maxDisp(disp,cvRound(p[0]),cvRound(p[1]),4);
+
     cv::Point3d p3 = getPointFromDisp(p[0],p[1],disparity_point);
+
     std::cout << "Point " << p3 << std::endl;
     output.at<cv::Point3d>(0,i) = p3;
   }

@@ -385,7 +385,7 @@ void StereoPoseExtractor::extract(const cv::Mat & image)
 void StereoPoseExtractor::process()
 {
 
-  cv::Mat global_image = hconcat(imageleft_,imageright_);
+  //cv::Mat global_image = hconcat(imageleft_,imageright_);
 
   op::Array<float> netInputArrayL;
   op::Array<float> netInputArrayR;
