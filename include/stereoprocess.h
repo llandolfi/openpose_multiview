@@ -142,8 +142,6 @@ struct DisparityExtractor : StereoPoseExtractor {
 
 	virtual void extract(const cv::Mat & image);
 
-	virtual void verify(const cv::Mat & pnts, bool* keep_on);
-
 	virtual double triangulate(cv::Mat & output); 
 
 	virtual void visualize(bool * keep_on);

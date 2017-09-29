@@ -493,12 +493,14 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   
   std::cout << "points to be projected " << std::endl;
   std::cout << pnts << std::endl;
-  std::cout << "intrinsics " << std::endl;
+  std::cout << "intrinsics left" << std::endl;
   std::cout << cam_.intrinsics_left_ << std::endl;
+  std::cout << "intrinsics right" << std::endl;
+  std::cout << cam_.intrinsics_right_ << std::endl;
 
   std::vector<cv::Point2d> points2D(pnts.cols);
 
-  cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),cam_.intrinsics_left_,cam_.dist_left_,points2D);
+  cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(cam_.ST_[0],0,0),cam_.intrinsics_right_,cam_.dist_right_,points2D);
 
   int inside = 0;
 
@@ -511,7 +513,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
     }
   } 
   //TODO: write circles in projected points
-  cv::Mat verification = imageleft_.clone();
+  cv::Mat verification = imageright_.clone();
   for (auto & c : points2D)
   {
     cv::circle(verification,c,4,cv::Scalar(0,0,255),2);

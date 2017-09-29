@@ -133,44 +133,7 @@ static void saveXYZ(const char* filename, const cv::Mat& mat)
 }
 
 
-void DisparityExtractor::verify(const cv::Mat & pnts, bool* keep_on)
-{ 
 
-  if(pnts.empty())
-  {
-    return;
-  }
-  
-  std::cout << "points to be projected " << std::endl;
-  std::cout << pnts << std::endl;
-  std::cout << "intrinsics " << std::endl;
-  std::cout << cam_.intrinsics_left_ << std::endl;
-
-  std::vector<cv::Point2d> points2D(pnts.cols);
-
-  cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),cam_.intrinsics_left_,cam_.dist_right_,points2D);
-
-  //TODO: write circles in projected points
-  cv::Mat verification = imageleft_.clone();
-  for (auto & c : points2D)
-  {
-    cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
-  }
-
-
-  cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
-  cv::imshow("Verification", verification);
-  
-  int k = cvWaitKey(2);
-  if (k == 27)
-  {
-      *keep_on = false;
-  }
-  if (k == 's')
-  {
-    cv:imwrite("../data/3Dpoints.jpg", verification);
-  }
-}
 void DisparityExtractor::extract(const cv::Mat & image)
 {
 

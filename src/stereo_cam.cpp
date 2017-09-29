@@ -46,7 +46,7 @@ StereoCamera::StereoCamera(const std::string resolution) : resolution_(resolutio
 
       dist_left_ = dist_coeffs.clone();
 
-      i = i + 8;
+      i = i + 7;
 
       fx = getDouble(lines[i+1],"=");
       fy = getDouble(lines[i+2],"=");
