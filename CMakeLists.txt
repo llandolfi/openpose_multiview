@@ -2,7 +2,7 @@ set (CMAKE_CXX_STANDARD 11)
 cmake_minimum_required( VERSION 2.8 )
 project( StereoPose )
 
-SET( CAFFE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/caffe)
+SET( CAFFE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../stereo_pose/openpose/3rdparty/caffe)
 
 
 find_package( OpenCV REQUIRED )
