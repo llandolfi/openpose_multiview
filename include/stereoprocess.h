@@ -160,8 +160,10 @@ struct DisparityExtractor : StereoPoseExtractor {
 
 	int ndisp,iters,levels = 0;
 
+	//BELIEF PROPAGATION WORKS BETTER BUT MUCH SLOWER
+
 	//cv::cuda::StereoBeliefPropagation::estimateRecommendedParams(1280,720,&ndisp,&iters,&levels);
-	cv::Ptr<cv::cuda::StereoBeliefPropagation> disparter_s_ = cv::cuda::createStereoBeliefPropagation();
+	//cv::Ptr<cv::cuda::StereoBeliefPropagation> disparter_ = cv::cuda::createStereoBeliefPropagation(128,3);
 
 };
 

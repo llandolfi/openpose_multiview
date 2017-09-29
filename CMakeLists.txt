@@ -2,7 +2,7 @@ set (CMAKE_CXX_STANDARD 11)
 cmake_minimum_required( VERSION 2.8 )
 project( StereoPose )
 
-SET( CAFFE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../stereo_pose/openpose/3rdparty/caffe)
+SET( CAFFE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../openpose/3rdparty/caffe)
 
 
 find_package( OpenCV REQUIRED )
@@ -47,6 +47,7 @@ if (CUDA_FOUND)
 
     ADD_EXECUTABLE( stereopose_rt examples/online.cpp )
     ADD_EXECUTABLE( stereopose_of examples/offline.cpp )
+    ADD_EXECUTABLE( k1server examples/kinect1server.cpp)
 
     TARGET_LINK_LIBRARIES(stereopose_rt
         stereoutils
@@ -55,4 +56,18 @@ if (CUDA_FOUND)
     TARGET_LINK_LIBRARIES(stereopose_of
         stereoutils
     )
+
+
+    TARGET_LINK_LIBRARIES( k1server
+        ${CUDA_LIBS}
+        ${libuvc_LIBRARIES} 
+        ${OpenCV_LIBS}
+        ${Boost_LIBRARIES}
+        ${CAFFE_DIR}/build/lib/libcaffe.so
+        glog
+        gflags
+    )
+
+
+
 endif ()
