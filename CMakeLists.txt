@@ -1,6 +1,8 @@
-set (CMAKE_CXX_STANDARD 11)
+
 cmake_minimum_required( VERSION 2.8 )
 project( StereoPose )
+
+add_definitions(--std=c++11)
 
 SET( CAFFE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../openpose/3rdparty/caffe)
 
@@ -75,7 +77,11 @@ include_directories(${FREENECT_GRABBER_INCLUDE_DIR} )
 
 
 find_package( OpenCV REQUIRED )
-find_package( Boost COMPONENTS program_options REQUIRED )
+
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_MULTITHREADED ON)
+find_package( Boost REQUIRED COMPONENTS program_options)
+
 find_package( Eigen3 REQUIRED )
 find_package( libuvc REQUIRED )
 find_package( CUDA REQUIRED)
@@ -130,19 +136,16 @@ if (CUDA_FOUND)
 
     TARGET_LINK_LIBRARIES(k1server
       ${FREENECT_LIBRARY}   
+      ${OpenCV_LIBS}
+      ${Boost_LIBRARIES}
+      rt
     )
 
-
-    TARGET_LINK_LIBRARIES( k1server
-        ${CUDA_LIBS}
-        ${libuvc_LIBRARIES} 
-        ${OpenCV_LIBS}
-        ${Boost_LIBRARIES}
-        ${CAFFE_DIR}/build/lib/libcaffe.so
-        glog
-        gflags
+    TARGET_LINK_LIBRARIES(k1client
+      ${FREENECT_LIBRARY}   
+      ${OpenCV_LIBS}
+      ${Boost_LIBRARIES}
+      rt
     )
-
-
 
 endif ()

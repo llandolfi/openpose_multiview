@@ -182,7 +182,7 @@ public:
 	T* writerGet()
 	{
 		T * r = 0;
-		{
+		{	
 			scoped_lock lk(pheader->mutex_);
 
 			if(pheader->freesize == 0)
