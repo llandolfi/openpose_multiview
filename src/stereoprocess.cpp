@@ -493,14 +493,6 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
     return;
   }
   
-  /*
-  std::cout << "points to be projected " << std::endl;
-  std::cout << pnts << std::endl;
-  std::cout << "intrinsics left" << std::endl;
-  std::cout << cam_.intrinsics_left_ << std::endl;
-  std::cout << "intrinsics right" << std::endl;
-  std::cout << cam_.intrinsics_right_ << std::endl;
-  */
 
   std::vector<cv::Point2d> points2D(pnts.cols);
 
