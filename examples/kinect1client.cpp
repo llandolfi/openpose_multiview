@@ -9,7 +9,6 @@
 
 
 
-const int distance = 7000;
 bool to_stop = false;
 
 
@@ -28,29 +27,21 @@ int main( int argc, char** argv )
          );
 
   //Get the address of the mapped region
-  void * addr       = region.get_address();
-
-  std::cout << "Got address " << std::endl;
+  void * addr = region.get_address();
 
   //Obtain a pointer to the shared structure
   trace_queue * data = static_cast<trace_queue*>(addr);
-
-  std::cout << "casted " << std::endl;
 
   cv::Mat RGB(480,640,CV_8UC3);
   cv::Mat depth(480,640,CV_16UC1);
 
 	while (!to_stop)
   {
-
-    std::cout << "locked " << std::endl;
    
     if(!data->message_in)
     {
       scoped_lock<interprocess_mutex> lock(data->mutex);
-      std::cout << "Waiting that something is in the buffer " << std::endl;
       data->cond_empty.wait(lock);
-      std::cout << "MMMMMM " << std::endl;
     }
     
     RGB.data = static_cast<uchar*>(data->RGB);

@@ -8,10 +8,8 @@
 #include "shared_memory_log.hpp"
 
 
-const int distance = 7000;
 bool to_stop = false;
 uint64_t count = 0;
-
 
 
 int main( int argc, char** argv )
@@ -64,30 +62,6 @@ int main( int argc, char** argv )
   				data->message_in = true;
   				data->cond_empty.notify_one();
 
-		   	 	cv::namedWindow("RGB", CV_WINDOW_AUTOSIZE);
-			  	cv::imshow("RGB", RGB);
-
-				double min,max;
-
-				cv::minMaxIdx(depth, &min, &max);
-				cv::Mat adjdepth;
-				cv::convertScaleAbs(depth, adjdepth, 255/ max);
-
-				cv::namedWindow("Depth", CV_WINDOW_AUTOSIZE);
-				cv::imshow("Depth", adjdepth);
-
-
-				int k = cvWaitKey(5);
-				if (k == 27)
-				{
-		  			to_stop = true;
-				}
-				if (k == 's')
-				{
-				  cv:imwrite("./depth.jpg", adjdepth);
-				}
-
-				//lock released at the end of the scope  
 			}
 		}
 
