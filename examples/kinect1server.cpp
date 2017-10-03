@@ -4,6 +4,8 @@
 #include "ipcpooledchannel.hpp"
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include "shared_memory_log.hpp"
 
 
 const int distance = 7000;
@@ -30,15 +32,15 @@ int main( int argc, char** argv )
 
   	//TODO: at fist try with simple shared memory, then use or modify ipc pooled channel
 
-  	shared_memory_object shm (create_only, "kinect1", read_write);
+  	shared_memory_object shm (open_or_create, "kinect1", read_write);
 
-  	shm.truncate(sizeof(uint8_t)*640*480*3);
+  	shm.truncate(sizeof(trace_queue));
 
   	mapped_region region(shm, read_write);
 
-  	std::memset(region.get_address(), 0, region.get_size());
-
   	void* message_addr = (void*)region.get_address();
+
+  	trace_queue * data = new(message_addr) trace_queue;
 
 	while (!to_stop)
   	{
@@ -52,8 +54,15 @@ int main( int argc, char** argv )
   			if(count % 2 == 0)
   			{
 
+  				//TODO: simply acquire the log
+  				scoped_lock<interprocess_mutex> lock(data->mutex);
 
-  				memcpy(message_addr, RGB.data, (640*480*3)*sizeof(uint8_t));
+  				memcpy(data->RGB, RGB.data, (640*480*3)*sizeof(uint8_t));
+  				memcpy(data->depth, depth.data, (640*480)*sizeof(uint16_t));
+
+  				//Notify that there is someting to read
+  				data->message_in = true;
+  				data->cond_empty.notify_one();
 
 		   	 	cv::namedWindow("RGB", CV_WINDOW_AUTOSIZE);
 			  	cv::imshow("RGB", RGB);
@@ -68,7 +77,7 @@ int main( int argc, char** argv )
 				cv::imshow("Depth", adjdepth);
 
 
-				int k = cvWaitKey(0);
+				int k = cvWaitKey(5);
 				if (k == 27)
 				{
 		  			to_stop = true;
@@ -77,7 +86,8 @@ int main( int argc, char** argv )
 				{
 				  cv:imwrite("./depth.jpg", adjdepth);
 				}
-  
+
+				//lock released at the end of the scope  
 			}
 		}
 

@@ -4,6 +4,8 @@
 #include "ipcpooledchannel.hpp"
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include "shared_memory_log.hpp"
 
 
 
@@ -18,24 +20,55 @@ int main( int argc, char** argv )
 
 	std::cout << "Ciao sono k1 client" << std::endl;
 
-  //TODO: this executable should read from Kinect 1 using interprocess channel
+  shared_memory_object shm (open_only, "kinect1", read_write);
 
-  shared_memory_object shm (open_only, "kinect1", read_only);
+  mapped_region region
+         (shm                       //What to map
+         ,read_write //Map it as read-write
+         );
 
-  mapped_region region(shm, read_only);
+  //Get the address of the mapped region
+  void * addr       = region.get_address();
+
+  std::cout << "Got address " << std::endl;
+
+  //Obtain a pointer to the shared structure
+  trace_queue * data = static_cast<trace_queue*>(addr);
+
+  std::cout << "casted " << std::endl;
 
   cv::Mat RGB(480,640,CV_8UC3);
+  cv::Mat depth(480,640,CV_16UC1);
 
 	while (!to_stop)
   {
 
-     
-    RGB.data = static_cast<uchar*>(region.get_address());
+    std::cout << "locked " << std::endl;
+   
+    if(!data->message_in)
+    {
+      scoped_lock<interprocess_mutex> lock(data->mutex);
+      std::cout << "Waiting that something is in the buffer " << std::endl;
+      data->cond_empty.wait(lock);
+      std::cout << "MMMMMM " << std::endl;
+    }
+    
+    RGB.data = static_cast<uchar*>(data->RGB);
+    depth.data = static_cast<uchar*>(data->depth);
 
     cv::namedWindow("RGB read", CV_WINDOW_AUTOSIZE);
   	cv::imshow("RGB read", RGB);
 
-  	int k = cvWaitKey(0);
+    double min,max;
+
+    cv::minMaxIdx(depth, &min, &max);
+    cv::Mat adjdepth;
+    cv::convertScaleAbs(depth, adjdepth, 255/ max);
+
+    cv::namedWindow("Depth", CV_WINDOW_AUTOSIZE);
+    cv::imshow("Depth", adjdepth);
+
+  	int k = cvWaitKey(10);
   	if (k == 27)
   	{
     		to_stop = true;
