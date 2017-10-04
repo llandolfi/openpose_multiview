@@ -565,13 +565,14 @@ cv::Point3d DepthExtractor::getPointFromDepth(double u, double v, double z)
     return cv::Point3d(0,0,0);
   }
 
-  double f = pcam_->intrinsics_.at<double>(0,0);
+  double fx = pcam_->intrinsics_.at<double>(0,0);
+  double fy = pcam_->intrinsics_.at<double>(1,1);
   double cx = pcam_->intrinsics_.at<double>(0,2);
   double cy = pcam_->intrinsics_.at<double>(1,2);
 
   double Z = z;
-  double X = ((u - cx) * Z)/f;
-  double Y = ((v - cy) * Z)/f;
+  double X = ((u - cx) * Z)/fx;
+  double Y = ((v - cy) * Z)/fy;
 
   return cv::Point3d(X,Y,Z);
 
@@ -601,6 +602,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   opArray2Mat(poseKeypointsL_, cam0pnts);
 
   std::vector<cv::Point3d> points3D;
+  std::vector<cv::Point2d> points2D;
 
   //If zeros in at least one: remove both 
   filterVisible(cam0pnts, cam0pnts);
@@ -610,12 +612,21 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
     cv::Point2d keypoint = cam0pnts.at<cv::Point2d>(0,i);
     cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
                         (double)depth_.at<uint16_t>(cvRound(keypoint.x),cvRound(keypoint.y)));
+
     point = point / 1000;
 
-    points3D.push_back(point);
+    if(point != cv::Point3d(0,0,0))
+    {
+      points3D.push_back(point);
+      points2D.push_back(keypoint);
+    }
   }
 
   //TODO: remove zeros also from points3D and the correspondent from points 2D
+  cam0pnts = cv::Mat(points2D);
+  cv::transpose(cam0pnts, cam0pnts);
+
+  std::cout << "Nose: " << points3D[0] << std::endl;
 
   finalpoints = cv::Mat(points3D);
 
