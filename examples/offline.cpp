@@ -52,9 +52,9 @@ int main(int argc, char **argv) {
 
   std::string res = std::to_string(S.width/2) + "x" + std::to_string(S.height);
 
-  PoseExtractorFromFile stereoextractor(argc, argv, res, FLAGS_file);
+  PoseExtractor *stereoextractor = new PoseExtractorFromFile(argc, argv, res, FLAGS_file);
     
-  stereoextractor.init();
+  stereoextractor->init();
 
   cv::Mat image;
   double error = 0.0;
@@ -65,11 +65,11 @@ int main(int argc, char **argv) {
     cv::Mat pnts3D;
     cap >> image;
 
-    double error = stereoextractor.go(image,FLAGS_verify,pnts3D,&keep_on);
+    double error = stereoextractor->go(image,FLAGS_verify,pnts3D,&keep_on);
 
   }
 
-  stereoextractor.destroy();
+  stereoextractor->destroy();
 
   return 0;
 }

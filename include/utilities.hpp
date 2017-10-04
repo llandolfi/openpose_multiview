@@ -49,3 +49,15 @@ std::string type2str(int type);
 
 void drawPoints(const cv::Mat & points, cv::Mat & image);
 
+void equalize(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & outl, cv::Mat & outr);
+
+int closestCentroidM(const cv::Vec2d & c, const std::vector<cv::Mat> & v);
+
+int closestCentroidC(const cv::Vec2d & c, const std::vector<cv::Vec2d> & v);
+
+cv::Vec2d getMedian(const cv::Mat & body);
+
+void pts2VecofBodies(const cv::Mat & pts1, std::vector<cv::Mat> & bodies_left);
+
+void splitVertically(const cv::Mat & input, cv::Mat & outputleft, cv::Mat & outputright);
+

@@ -46,183 +46,106 @@ DEFINE_bool(visualize,                  false,          "Visualize keypoints");
 DEFINE_bool(show_error,                 false,           "Show the reprojection error on terminal");
 
 
-void splitVertically(const cv::Mat & input, cv::Mat & outputleft, cv::Mat & outputright)
+PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution)
 {
 
-  int rowoffset = input.rows;
-  int coloffset = input.cols / 2;
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  int r = 0;
-  int c = 0;
+  inited_ = false;
+  cur_frame_ = 0;
 
-  outputleft = input(cv::Range(r, std::min(r + rowoffset, input.rows)), cv::Range(c, std::min(c + coloffset, input.cols)));
+  if (FLAGS_write_keypoint != "")
+  {
+    outputfile_.open(FLAGS_write_keypoint);
+    //TODO:write header of outputfilef
+    outputfile_ << "camera frame subject ";
+    for (int i = 0; i < 18; i++)
+    {
+      outputfile_ << "p" << i << "x" << " p" << i << "y" << " p" << i << "conf ";
+    }
+    outputfile_ << "\n";
+  }
 
-  c += coloffset;
+  // Step 2 - Read Google flags (user defined configuration)
+  // outputSize
+  const auto outputSize = op::flagsToPoint(resolution, "1280x720");
+  // netInputSize
+  const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "656x368");
+  // netOutputSize
+  const auto netOutputSize = netInputSize;
+  // poseModel
+  const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
 
-  outputright = input(cv::Range(r, std::min(r + rowoffset, input.rows)), cv::Range(c, std::min(c + coloffset, input.cols)));
-    
+  // Step 3 - Initialize all required classes
+  cvMatToOpInput_ = new op::CvMatToOpInput{netInputSize, FLAGS_scale_number, (float)FLAGS_scale_gap};
+  cvMatToOpOutput_ = new op::CvMatToOpOutput{outputSize};
+  poseExtractorCaffeL_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
+                                                FLAGS_model_folder, FLAGS_num_gpu_start};
+  poseRendererL_ = new op::PoseRenderer{netOutputSize, outputSize, poseModel, nullptr, (float)FLAGS_render_threshold,
+                                    !FLAGS_disable_blending, (float)FLAGS_alpha_pose};
+  opOutputToCvMatL_ = new op::OpOutputToCvMat{outputSize};
+  opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
 }
 
-void pts2VecofBodies(const cv::Mat & pts1, std::vector<cv::Mat> & bodies_left)
-{
-  for(int i=0; i < pts1.cols/18; i++)
+double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points3D, bool* keep_on)
+{ 
+
+  extract(image);
+
+  process();
+ 
+  double error = triangulate(points3D);
+
+  if( FLAGS_show_error)
   {
-    cv::Mat pleft(1,18,CV_64FC2);
+    std::cout << "Reprojection error: " << error << std::endl;
+  }
 
-    for (int j=0; j<18; j++)
-    {
-      pleft.at<cv::Vec2d>(0,j) = pts1.at<cv::Vec2d>(0,(18*i)+j);
-    }
+  if(ver)
+  {
+    verify(points3D, keep_on);
+  }
 
-    bodies_left.push_back(pleft);
+  return error;
+}
+
+void PoseExtractor::init()
+{
+  if (inited_ == false)
+  {
+    poseExtractorCaffeL_->initializationOnThread();
+    poseRendererL_->initializationOnThread();
+    inited_ = true;
   }
 }
 
-cv::Vec2d getMedian(const cv::Mat & body)
+void PoseExtractor::destroy()
 {
-
-  double x,y = 0.0;
-  double count = 0.0;
-
-  for(int i = 0; i < body.cols; i++)
-  {
-    cv::Vec2d v = body.at<cv::Vec2d>(0,i);
-    x = x + v[0];
-    y = y + v[1];
-
-    if (v[0] != 0.0 || v[1] != 0.0)
-    {
-      count++;
-    }
-
-  } 
-
-  x = x / count;
-  y = y / count;
-
-  return cv::Vec2d(x,y);
+  outputfile_.close();
 }
 
-int closestCentroidC(const cv::Vec2d & c, const std::vector<cv::Vec2d> & v)
+void PoseExtractor::setDepth(const cv::Mat & m)
 {
-
-  int minind = 0;
-  double mindist = 999999999.9;
-  int ind = -1;
-
-  for (auto & a : v)
-  {
-    ind ++;
-    double dist = std::sqrt(std::pow(c[0] - a[0], 2) + std::pow(c[1] - a[1], 2));
-
-    if(dist < mindist)
-    {
-      mindist = dist;
-      minind = ind;
-    }
-  }
-
-  return minind;
+  depth_ = m;
 }
 
 
-int closestCentroidM(const cv::Vec2d & c, const std::vector<cv::Mat> & v)
-{
+StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution), 
+                                            cam_(resolution)
+{  
 
-  std::vector<cv::Vec2d> vc;
-
-  for (auto & a : v)
-  {
-    vc.push_back(getMedian(a));
-  }
-
-  return closestCentroidC(c,vc);
-}
-
-void equalize(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & outl, cv::Mat & outr)
-{
-
-  //TODO: divide the points in bodies -> every 18 points one body, get the center of each body
-  std::vector<cv::Mat> bodies_left;
-  std::vector<cv::Mat> bodies_right;
-
-  std::vector<cv::Vec2d> centroids_left;
-  std::vector<cv::Vec2d> centroids_right;
-
-  std::vector<int> mininds;
-
-  bool minatleft = true;
-
-  pts2VecofBodies(pts1, bodies_left);
-  pts2VecofBodies(pts2, bodies_right);
-
-  for (auto & b : bodies_left)
-  {
-    centroids_left.push_back(getMedian(b));
-  }
-
-  for (auto & b : bodies_right)
-  {
-    centroids_right.push_back(getMedian(b));
-  }
-
-  std::vector<cv::Mat> * minbodies;
-  std::vector<cv::Mat> * maxbodies;
-
-  if(bodies_left.size() < bodies_right.size())
-  {
-    minbodies = &(bodies_left);
-    maxbodies = &(bodies_right);
-  }
-  else
-  {
-    minatleft = false;
-    minbodies = &(bodies_right);
-    maxbodies = &(bodies_left);
-  }
-
-  for(auto & c : *minbodies)
-  {
-    //TODO:find the index of the closest element to c in maxbodies 
-    std::vector<cv::Mat> topass = *maxbodies;
-    std::vector<cv::Vec2d> vc;
-    cv::Vec2d d = getMedian(c);
-
-    for (auto & a : topass)
+  if (FLAGS_write_video != "")
+  { 
+    //TODO: parse resolution from instance fields
+    cv::Size S = cv::Size(cam_.width_*2, cam_.height_);
+    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), 7, S, true);
+    if (!outputVideo_.isOpened())
     {
-      vc.push_back(getMedian(a));
+        std::cout  << "Could not open the output video for write: " << std::endl;
+        exit(-1);
     }
-
-    int curmin = closestCentroidC(d,vc);
-    mininds.push_back(curmin);
   }
 
-  int outsize = minbodies->size();
-
-  cv::Mat out1 = cv::Mat(1,outsize*18, CV_64FC2);
-  cv::Mat out2 = cv::Mat(1,outsize*18, CV_64FC2);
-
-  for (int i = 0; i < outsize; i++)
-  {
-
-    for(int j = 0; j < 18; j++)
-    {
-      out1.at<cv::Vec2d>(0,(18*i)+j) = minbodies->at(i).at<cv::Vec2d>(0,j);
-      out2.at<cv::Vec2d>(0,(18*i)+j) = maxbodies->at(mininds[i]).at<cv::Vec2d>(0,j);
-    }
-
-  }
-
-  if(minatleft)
-  {
-    outl = out1;
-    outr = out2;
-  }
-  else
-  {
-    outl = out2;
-    outr = out1;
-  }
 }
 
 void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints)
@@ -307,73 +230,6 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   }
 }
 
-StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::string resolution) : cam_(resolution)
-{  
-
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  inited_ = false;
-  cur_frame_ = 0;
-
-  if (FLAGS_write_video != "")
-  { 
-    //TODO: parse resolution from instance fields
-    cv::Size S = cv::Size(cam_.width_*2, cam_.height_);
-    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), 7, S, true);
-    if (!outputVideo_.isOpened())
-    {
-        std::cout  << "Could not open the output video for write: " << std::endl;
-        exit(-1);
-    }
-  }
-
-  if (FLAGS_write_keypoint != "")
-  {
-    outputfile_.open(FLAGS_write_keypoint);
-    //TODO:write header of outputfilef
-    outputfile_ << "camera frame subject ";
-    for (int i = 0; i < 18; i++)
-    {
-      outputfile_ << "p" << i << "x" << " p" << i << "y" << " p" << i << "conf ";
-    }
-    outputfile_ << "\n";
-  }
-
-  // Step 2 - Read Google flags (user defined configuration)
-  // outputSize
-  const auto outputSize = op::flagsToPoint(cam_.resolution_, "1280x720");
-  // netInputSize
-  const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "656x368");
-  // netOutputSize
-  const auto netOutputSize = netInputSize;
-  // poseModel
-  const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
-
-  // Step 3 - Initialize all required classes
-  cvMatToOpInput_ = new op::CvMatToOpInput{netInputSize, FLAGS_scale_number, (float)FLAGS_scale_gap};
-  cvMatToOpOutput_ = new op::CvMatToOpOutput{outputSize};
-  poseExtractorCaffeL_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
-                                                FLAGS_model_folder, FLAGS_num_gpu_start};
-  poseRendererL_ = new op::PoseRenderer{netOutputSize, outputSize, poseModel, nullptr, (float)FLAGS_render_threshold,
-                                    !FLAGS_disable_blending, (float)FLAGS_alpha_pose};
-  opOutputToCvMatL_ = new op::OpOutputToCvMat{outputSize};
-  opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
-}
-
-void StereoPoseExtractor::init()
-{
-  if (inited_ == false)
-  {
-    poseExtractorCaffeL_->initializationOnThread();
-    poseRendererL_->initializationOnThread();
-    inited_ = true;
-  }
-}
-
-void StereoPoseExtractor::destroy()
-{
-  outputfile_.close();
-}
 
 void StereoPoseExtractor::extract(const cv::Mat & image)
 {
@@ -386,8 +242,6 @@ void StereoPoseExtractor::extract(const cv::Mat & image)
 //TODO: save time by using OpenPose in a single image? 
 void StereoPoseExtractor::process()
 {
-
-  //cv::Mat global_image = hconcat(imageleft_,imageright_);
 
   op::Array<float> netInputArrayL;
   op::Array<float> netInputArrayR;
@@ -555,27 +409,24 @@ double StereoPoseExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnt
   return cv::norm(points2D - cam0pnts);
 }
 
-double StereoPoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points3D, bool* keep_on)
+
+PoseExtractorFromFile::PoseExtractorFromFile(int argc, char **argv, const std::string resolution, const std::string path) 
+                                              : StereoPoseExtractor(argc,argv,resolution), filepath_(path), file_(path)
 { 
 
-  extract(image);
 
-  process();
- 
-  double error = triangulate(points3D);
-
-  if( FLAGS_show_error)
+  if(file_.is_open())
   {
-    std::cout << "Reprojection error: " << error << std::endl;
+    getline(file_,line_);
+    getline(file_,line_);
   }
-
-  if(ver)
+  else
   {
-    verify(points3D, keep_on);
-  }
-
-  return error;
+    std::cout << "Could not open keypoints file!" << std::endl;
+    exit(-1);
+  } 
 }
+
 
 /*
 * Fill vector lines with the file rows relative to current frame
@@ -675,3 +526,137 @@ void PoseExtractorFromFile::getPoints(cv::Mat & outputL, cv::Mat & outputR)
   vector2Mat(points_right_, outputR);
 }
 
+DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
+{
+
+  // Step 2 - Read Google flags (user defined configuration)
+  // outputSize
+  const auto outputSize = op::flagsToPoint("640x480", "640x480");
+  // netInputSize
+  const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "640x480");
+  // netOutputSize
+  const auto netOutputSize = netInputSize;
+  // poseModel
+  const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
+
+  // Step 3 - Initialize all required classes
+  cvMatToOpInput_ = new op::CvMatToOpInput{netInputSize, FLAGS_scale_number, (float)FLAGS_scale_gap};
+  cvMatToOpOutput_ = new op::CvMatToOpOutput{outputSize};
+  poseExtractorCaffeL_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
+                                                FLAGS_model_folder, FLAGS_num_gpu_start};
+  poseRendererL_ = new op::PoseRenderer{netOutputSize, outputSize, poseModel, nullptr, (float)FLAGS_render_threshold,
+                                    !FLAGS_disable_blending, (float)FLAGS_alpha_pose};
+  opOutputToCvMatL_ = new op::OpOutputToCvMat{outputSize};
+  opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
+
+  pcam_ = new DepthCamera();
+}
+
+/*
+* x: point coordinate in pixel
+* y: point coordinate in pixel
+* d: disparity at point (x,y)
+*/
+cv::Point3d DepthExtractor::getPointFromDepth(double u, double v, double z)
+{
+
+  double f = pcam_->intrinsics_.at<double>(0,0);
+  double cx = pcam_->intrinsics_.at<double>(0,2);
+  double cy = pcam_->intrinsics_.at<double>(1,2);
+
+  double Z = z;
+  double X = ((u - cx) * Z)/f;
+  double Y = ((v - cy) * Z)/f;
+
+  return cv::Point3d(X,Y,Z);
+
+}
+
+double DepthExtractor::triangulate(cv::Mat & finalpoints)
+{ 
+  //I can take all the points negleting if they belong to a specific person 
+  //how can I know if the points belong to the same person? 
+  cv::Mat cam0pnts;
+  opArray2Mat(poseKeypointsL_, cam0pnts);
+
+  std::vector<cv::Point3d> pointsd3D;
+
+  //TODO: just get the corresponing depth for that pixel
+  for( int i = 0; i < cam0pnts.cols; i++)
+  { 
+    cv::Point2d keypoint = cam0pnts.at<cv::Point2d>(0,i);
+    cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
+                        (double)depth_.at<uint16_t>(cvRound(keypoint.x),cvRound(keypoint.y)));
+  }
+
+  //return getRMS(cam0pnts,finalpoints);
+
+  return 0.0;
+}
+
+void DepthExtractor::process()
+{
+
+  op::Array<float> netInputArrayL;
+
+  op::Array<float> outputArrayL;
+
+  std::vector<float> scaleRatiosL;
+
+  double scaleInputToOutputL;
+
+  std::tie(netInputArrayL, scaleRatiosL) = cvMatToOpInput_->format(RGB_);
+  std::tie(scaleInputToOutputL, outputArrayL) = cvMatToOpOutput_->format(RGB_);
+
+  // Step 3 - Estimate poseKeypoints
+  poseExtractorCaffeL_->forwardPass(netInputArrayL, {RGB_.cols, RGB_.rows}, scaleRatiosL);
+
+  poseKeypointsL_ = poseExtractorCaffeL_->getPoseKeypoints();
+
+  std::string kpl_str = poseKeypointsL_.toString();
+
+  // Step 4 - Render poseKeypoints
+  poseRendererL_->renderPose(outputArrayL, poseKeypointsL_);
+  
+  // Step 5 - OpenPose output format to cv::Mat
+  outputImageL_ = opOutputToCvMatL_->formatToCvMat(outputArrayL);
+
+  if( FLAGS_write_video != "")
+  { 
+    outputVideo_ << RGB_;
+  }
+
+  if( FLAGS_write_keypoint != "")
+  {
+    emitCSV(outputfile_, kpl_str, poseKeypointsL_, 0, cur_frame_);
+  }
+
+  if( FLAGS_visualize)
+  {
+    visualize(&keep_on);
+  }
+}
+
+void DepthExtractor::extract(const cv::Mat & m)
+{  
+  cur_frame_ ++;
+  RGB_ = m;
+}
+
+void DepthExtractor::visualize(bool* keep_on)
+{
+ 
+  cv::namedWindow("Keypoints", CV_WINDOW_AUTOSIZE);
+  cv::imshow("Keypoints", outputImageL_);
+
+  int k = cvWaitKey(2);
+  if (k == 27)
+  {
+      *keep_on = false;
+  }
+}
+
+void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
+{
+
+}

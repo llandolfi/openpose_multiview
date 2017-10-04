@@ -31,14 +31,75 @@ void splitVertically(const cv::Mat & input, cv::Mat & outputleft, cv::Mat & outp
 std::vector<std::string> CSVTokenize(std::string kpl_str);
 void emitCSV(std::ofstream & outputfile, std::string & kp_str, const op::Array<float> & poseKeypoints, int camera);
 
+struct PoseExtractor {
 
-struct StereoPoseExtractor {
+	PoseExtractor(int argc, char **argv, const std::string resolution);
+
+	virtual double go(const cv::Mat & image, const bool verify, cv::Mat &, bool* keep_on);
+
+	virtual double triangulate(cv::Mat &)=0;
+
+	virtual void process()=0;
+
+	virtual void extract(const cv::Mat &)=0;
+
+	virtual void visualize(bool* keep_on)=0;
+
+	virtual void verify(const cv::Mat & pnts, bool* keep_on)=0;
+
+	virtual void setDepth(const cv::Mat & m);
+
+	virtual void init();
+
+	virtual void destroy();
+
+	op::Array<float> poseKeypointsL_;
+
+	cv::Mat outputImageL_;
+
+	op::CvMatToOpInput *cvMatToOpInput_;
+	op::CvMatToOpOutput *cvMatToOpOutput_;
+	op::PoseExtractorCaffe *poseExtractorCaffeL_;
+	op::PoseRenderer *poseRendererL_;
+	op::OpOutputToCvMat *opOutputToCvMatL_;
+	op::OpOutputToCvMat *opOutputToCvMatR_;
+
+	bool inited_;
+
+	cv::VideoWriter outputVideo_; 
+	std::ofstream outputfile_;   
+
+	int cur_frame_;	
+
+	PinholeCamera * pcam_;
+
+	cv::Mat depth_;
+};
+
+struct DepthExtractor : PoseExtractor {
+
+	DepthExtractor(int argc, char **argv, const std::string resolution);
+
+	virtual double triangulate(cv::Mat &);
+
+	virtual void process();
+
+	virtual void extract(const cv::Mat &);
+
+	virtual void visualize(bool* keep_on);
+
+	virtual void verify(const cv::Mat & pnts, bool* keep_on);
+
+	cv::Point3d getPointFromDepth(double u, double v, double z);
+
+	cv::Mat RGB_;
+
+};
+
+
+struct StereoPoseExtractor : PoseExtractor {
 
 	StereoPoseExtractor(int argc, char **argv, const std::string resolution);
-
-	void init();
-
-	void destroy();
 
 	void triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints);
 
@@ -58,77 +119,19 @@ struct StereoPoseExtractor {
 
 	virtual double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D, bool left = true);
 
-	virtual double go(const cv::Mat & image, const bool verify, cv::Mat &, bool* keep_on);
-
-
-	op::CvMatToOpInput *cvMatToOpInput_;
-	op::CvMatToOpOutput *cvMatToOpOutput_;
-	op::PoseExtractorCaffe *poseExtractorCaffeL_;
-	op::PoseRenderer *poseRendererL_;
-	op::OpOutputToCvMat *opOutputToCvMatL_;
-	op::OpOutputToCvMat *opOutputToCvMatR_;
-
-	op::Array<float> poseKeypointsL_;
 	op::Array<float> poseKeypointsR_;
-
-	bool inited_;
-
-	cv::VideoWriter outputVideo_; 
-	std::ofstream outputfile_;   
-
-	int cur_frame_;	
 
 	cv::Mat imageleft_;
 	cv::Mat imageright_;
 	cv::Mat outputImageR_;
-	cv::Mat outputImageL_;
 
 	StereoCamera cam_;
+
 };
 
 struct DisparityExtractor : StereoPoseExtractor {
 
-	DisparityExtractor(int argc, char **argv, const std::string resolution) : StereoPoseExtractor(argc,argv,resolution){
-
-		double f = cam_.intrinsics_left_.at<double>(0,0);
-		double cx = cam_.intrinsics_left_.at<double>(0,2);
-		double cy = cam_.intrinsics_left_.at<double>(1,2);
-		double B = cam_.ST_[0];
-
-		//TODO: build the Q matrix
-		cv::Mat K4 = (cv::Mat_<double>(4,4) << f, 0.0, 0.0, cx, 0.0, f, 0.0, cy, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0);
-		cv::Mat RT = cv::Mat::eye(4,4,CV_64FC1);
-		RT.at<double>(0,3) = B;
-
-		P_ = K4 * RT;
-		iP_ = P_.inv();
-
-	    cv::Mat R1,R2,P1,P2;
-	    cv::Size img_size = cv::Size(cam_.width_,cam_.height_);
-
-	    cv::stereoRectify(cam_.intrinsics_left_,cam_.dist_left_,cam_.intrinsics_right_,cam_.dist_right_,img_size, cam_.SR_, cam_.ST_,
-	                      R1,R2,P1,P2,Q_, cv::CALIB_ZERO_DISPARITY, -1,img_size ,&roi1_, &roi2_);
-
-		/*	   
-		* No need for rectification because of (almost) perfect horizontal stereo
-
-	    initUndistortRectifyMap(cam_.intrinsics_left_, cam_.dist_left_ , R1, P1, img_size, CV_16SC2, map11_, map12_);
-	    initUndistortRectifyMap(cam_.intrinsics_right_, cam_.dist_right_, R2, P2, img_size, CV_16SC2, map21_, map22_);
-
-	    /*disparter_->setROI1(roi1_);
-	    disparter_->setROI2(roi2_);
-	    disparter_->setPreFilterCap(31);
-	    disparter_->setBlockSize(9);
-	    disparter_->setMinDisparity(0);
-	    disparter_->setTextureThreshold(10);
-	    disparter_->setUniquenessRatio(15);
-	    disparter_->setSpeckleWindowSize(100);
-	    disparter_->setSpeckleRange(32);
-	  	disparter_->setDisp12MaxDiff(1);*/
-
-	  	//disparity_ = cv::cuda::GpuMat(1280,720,CV_8U);
-
-	}
+	DisparityExtractor(int argc, char **argv, const std::string resolution);
 
 	void getDisparity();
 
@@ -161,7 +164,6 @@ struct DisparityExtractor : StereoPoseExtractor {
 	int ndisp,iters,levels = 0;
 
 	//BELIEF PROPAGATION WORKS BETTER BUT MUCH SLOWER
-
 	//cv::cuda::StereoBeliefPropagation::estimateRecommendedParams(1280,720,&ndisp,&iters,&levels);
 	//cv::Ptr<cv::cuda::StereoBeliefPropagation> disparter_ = cv::cuda::createStereoBeliefPropagation(128,3);
 
@@ -169,22 +171,7 @@ struct DisparityExtractor : StereoPoseExtractor {
 
 struct PoseExtractorFromFile : StereoPoseExtractor {
 
-	PoseExtractorFromFile(int argc, char **argv, const std::string resolution, const std::string path) 
-                                              : StereoPoseExtractor(argc,argv,resolution), filepath_(path), file_(path)
-    {	
-
-
-    	if(file_.is_open())
-    	{
-    		getline(file_,line_);
-    		getline(file_,line_);
-    	}
-    	else
-    	{
-    		std::cout << "Could not open keypoints file!" << std::endl;
-    		exit(-1);
-    	}	
-    }
+	PoseExtractorFromFile(int argc, char **argv, const std::string resolution, const std::string path);
                                         
 	virtual void process(const cv::Mat & image);
 

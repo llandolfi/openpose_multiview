@@ -17,7 +17,7 @@ int main( int argc, char** argv )
 
   using namespace boost::interprocess;
 
-	std::cout << "Ciao sono k1 client" << std::endl;
+	std::cout << "k1 client Ready" << std::endl;
 
   shared_memory_object shm (open_only, "kinect1", read_write);
 

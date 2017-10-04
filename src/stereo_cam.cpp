@@ -128,3 +128,29 @@ void StereoCamera::dump()
   std::cout << "Width " << width_ << std::endl;
   std::cout << "Height: " << height_ << std::endl;
 }
+
+DepthCamera::DepthCamera()
+{
+  width_ = 640;
+  height_ = 480;
+
+  intrinsics_ = (cv::Mat_<double>(3,3) << 585.187492217609, 0, 322.714077555293, 0, 585.308616340665, 248.626108676666, 0, 0, 1);
+
+}
+
+DepthCamera::DepthCamera(const std::string params_path)
+{
+
+  cv::FileStorage fs(params_path, cv::FileStorage::READ);
+  fs["rgb_intrinsics"] >> intrinsics_;
+
+  height_ = fs["image_height"];
+  width_ = fs["image_width"];
+
+}
+
+void DepthCamera::dump()
+{
+  std::cout << "intrinsics matrix " << std::endl;
+  std::cout << intrinsics_ << std::endl;
+}

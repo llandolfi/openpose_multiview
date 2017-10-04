@@ -128,6 +128,7 @@ if (CUDA_FOUND)
 
     TARGET_LINK_LIBRARIES(stereopose_rt
         stereoutils
+        rt
     )
 
     TARGET_LINK_LIBRARIES(stereopose_of
