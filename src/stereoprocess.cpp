@@ -560,6 +560,11 @@ DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resoluti
 cv::Point3d DepthExtractor::getPointFromDepth(double u, double v, double z)
 {
 
+  if(z == 0.0)
+  {
+    return cv::Point3d(0,0,0);
+  }
+
   double f = pcam_->intrinsics_.at<double>(0,0);
   double cx = pcam_->intrinsics_.at<double>(0,2);
   double cy = pcam_->intrinsics_.at<double>(1,2);
@@ -572,6 +577,22 @@ cv::Point3d DepthExtractor::getPointFromDepth(double u, double v, double z)
 
 }
 
+double DepthExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D)
+{
+  if(pnts3D.empty())
+  {
+    return 0.0;
+  }
+
+  cv::Mat points2D; 
+
+  cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
+
+  cv::transpose(points2D,points2D);
+
+  return cv::norm(points2D - cam0pnts);
+}
+
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
   //I can take all the points negleting if they belong to a specific person 
@@ -579,17 +600,26 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   cv::Mat cam0pnts;
   opArray2Mat(poseKeypointsL_, cam0pnts);
 
-  std::vector<cv::Point3d> pointsd3D;
+  std::vector<cv::Point3d> points3D;
 
-  //TODO: just get the corresponing depth for that pixel
+  //If zeros in at least one: remove both 
+  filterVisible(cam0pnts, cam0pnts);
+
   for( int i = 0; i < cam0pnts.cols; i++)
   { 
     cv::Point2d keypoint = cam0pnts.at<cv::Point2d>(0,i);
     cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
                         (double)depth_.at<uint16_t>(cvRound(keypoint.x),cvRound(keypoint.y)));
+    point = point / 1000;
+
+    points3D.push_back(point);
   }
 
-  //return getRMS(cam0pnts,finalpoints);
+  //TODO: remove zeros also from points3D and the correspondent from points 2D
+
+  finalpoints = cv::Mat(points3D);
+
+  return getRMS(cam0pnts,finalpoints);
 
   return 0.0;
 }
@@ -658,5 +688,32 @@ void DepthExtractor::visualize(bool* keep_on)
 
 void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 {
+  if(pnts.empty())
+  {
+    return;
+  }
 
+  std::vector<cv::Point2d> points2D(pnts.cols);
+
+  cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
+
+  cv::Mat verification = RGB_.clone();
+  for (auto & c : points2D)
+  {
+    cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
+  }
+
+
+  cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
+  cv::imshow("Verification", verification);
+  
+  int k = cvWaitKey(2);
+  if (k == 27)
+  {
+      *keep_on = false;
+  }
+  if (k == 's')
+  {
+    cv:imwrite("../data/3Dpoints.jpg", verification);
+  }
 }

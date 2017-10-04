@@ -90,6 +90,8 @@ struct DepthExtractor : PoseExtractor {
 
 	virtual void verify(const cv::Mat & pnts, bool* keep_on);
 
+	double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D);
+
 	cv::Point3d getPointFromDepth(double u, double v, double z);
 
 	cv::Mat RGB_;

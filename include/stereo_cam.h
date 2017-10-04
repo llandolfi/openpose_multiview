@@ -30,6 +30,7 @@ struct PinholeCamera{
 	int width_,height_;
 
 	cv::Mat intrinsics_;
+	cv::Mat dist_;
 
 };
 
