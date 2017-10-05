@@ -39,8 +39,6 @@ DEFINE_bool(verify,                     false,            "Show projection of tr
 
 DEFINE_bool(disparity,                  false,            "Use disparity map instead of triangulation to get 3D body points");  
 
-DEFINE_bool(depth,                      false,            "Use depth map instead of triangulation to get 3D body points");  
-
 DEFINE_string(resolution,               "1280x720",     "The image resolution (display and output). Use \"-1x-1\" to force the program to use the"
                                                         " default images resolution.");  
 
@@ -212,8 +210,8 @@ void startK1Stream()
   //Obtain a pointer to the shared structure
   trace_queue * data = static_cast<trace_queue*>(addr);
 
-  cv::Mat RGB(480,640,CV_8UC3);
-  cv::Mat depth(480,640,CV_16UC1);
+  cv::Mat RGB(data->height_,data->width_,CV_8UC3);
+  cv::Mat depth(data->height_,data->width_,CV_16UC1);
 
   stereoextractor->init();
 
@@ -242,22 +240,6 @@ int main(int argc, char **argv) {
   // Parsing command line flags
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  if(FLAGS_disparity == true)
-  {
-    stereoextractor = new DisparityExtractor(argc, argv, FLAGS_resolution);
-  }
-  else
-  {
-    if(FLAGS_depth == true)
-    {
-      stereoextractor = new DepthExtractor(argc, argv, FLAGS_resolution);
-    }
-    else
-    {
-      stereoextractor = new StereoPoseExtractor(argc, argv, FLAGS_resolution);
-    }
-  }
-
   if( FLAGS_video == "" )
   {
 
@@ -265,10 +247,27 @@ int main(int argc, char **argv) {
     {
       case 0: 
               std::cout << "Streaming from ZED" << std::endl;
+
+              if(FLAGS_disparity == true)
+              {
+                std::cout << "Using disparity " << std::endl;
+                stereoextractor = new DisparityExtractor(argc, argv, FLAGS_resolution);
+              }
+              else
+              {
+                std::cout << "Using triangulation " << std::endl;
+                stereoextractor = new StereoPoseExtractor(argc, argv, FLAGS_resolution);
+              }
+
               startZedStream();
 
       case 1: 
               std::cout << "Streaming from Kinect 1" << std::endl;
+              std::cout << "Using depht " << std::endl;
+
+              FLAGS_resolution = "640x480";
+
+              stereoextractor = new DepthExtractor(argc, argv, FLAGS_resolution);
               startK1Stream();
     }
   }

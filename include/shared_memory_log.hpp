@@ -3,12 +3,21 @@
 
 struct trace_queue
 {
-   enum {image_size = 640*480*3 * sizeof(unsigned char)};
-   enum {depth_size = 640*480*2 * sizeof(unsigned char)};
+   enum {max_size = 1920*1080*3 * sizeof(unsigned char)};
 
-   trace_queue()
-      :  message_in(false)
+   trace_queue(int w, int h)
+      :  message_in(false), width_(w), height_(h)
    {}
+
+   uint getRGBSize()
+   {
+      return width_ * height_ * 3;
+   }
+
+   uint getDepthSize()
+   {
+      return width_ * height_ * 2;
+   }
 
    //Mutex to protect access to the queue
    boost::interprocess::interprocess_mutex      mutex;
@@ -20,9 +29,12 @@ struct trace_queue
    boost::interprocess::interprocess_condition  cond_full;
 
    //Put here the payload
-   unsigned char RGB[image_size];
-   unsigned char depth[depth_size];
+   unsigned char RGB[max_size];
+   unsigned char depth[max_size];
 
    //Is there any message
    bool message_in;
+
+   int width_;
+   int height_;
 };

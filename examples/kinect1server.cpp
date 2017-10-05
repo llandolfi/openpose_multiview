@@ -1,7 +1,6 @@
 #include "kinect1/freenect_grabber.hpp"
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
-#include "ipcpooledchannel.hpp"
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
@@ -38,7 +37,12 @@ int main( int argc, char** argv )
 
   	void* message_addr = (void*)region.get_address();
 
-  	trace_queue * data = new(message_addr) trace_queue;
+    memset(message_addr, 0, region.get_size());
+
+    int w = 640;
+    int h = 480;
+
+  	trace_queue * data = new(message_addr) trace_queue(w,h);
 
 	while (!to_stop)
   	{
@@ -55,8 +59,8 @@ int main( int argc, char** argv )
   				//TODO: simply acquire the log
   				scoped_lock<interprocess_mutex> lock(data->mutex);
 
-  				memcpy(data->RGB, RGB.data, (640*480*3)*sizeof(uint8_t));
-  				memcpy(data->depth, depth.data, (640*480)*sizeof(uint16_t));
+  				memcpy(data->RGB, RGB.data, (w*h*3)*sizeof(uint8_t));
+  				memcpy(data->depth, depth.data, (w*h)*sizeof(uint16_t));
 
   				//Notify that there is someting to read
   				data->message_in = true;

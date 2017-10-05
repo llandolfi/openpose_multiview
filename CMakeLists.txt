@@ -124,7 +124,6 @@ if (CUDA_FOUND)
     ADD_EXECUTABLE( stereopose_rt examples/online.cpp )
     ADD_EXECUTABLE( stereopose_of examples/offline.cpp )
     ADD_EXECUTABLE( k1server examples/kinect1server.cpp )
-    ADD_EXECUTABLE( k1client examples/kinect1client.cpp)
 
     TARGET_LINK_LIBRARIES(stereopose_rt
         stereoutils
@@ -136,13 +135,6 @@ if (CUDA_FOUND)
     )
 
     TARGET_LINK_LIBRARIES(k1server
-      ${FREENECT_LIBRARY}   
-      ${OpenCV_LIBS}
-      ${Boost_LIBRARIES}
-      rt
-    )
-
-    TARGET_LINK_LIBRARIES(k1client
       ${FREENECT_LIBRARY}   
       ${OpenCV_LIBS}
       ${Boost_LIBRARIES}

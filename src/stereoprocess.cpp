@@ -686,6 +686,7 @@ void DepthExtractor::extract(const cv::Mat & m)
 
 void DepthExtractor::visualize(bool* keep_on)
 {
+
  
   cv::namedWindow("Keypoints", CV_WINDOW_AUTOSIZE);
   cv::imshow("Keypoints", outputImageL_);
