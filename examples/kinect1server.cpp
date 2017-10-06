@@ -13,64 +13,65 @@ uint64_t count = 0;
 
 int main( int argc, char** argv )
 {
-	using namespace boost::interprocess;
+  using namespace boost::interprocess;
 
-	std::cout << "Ciao sono k1 server" << std::endl;
+  std::cout << "Ciao sono k1 server" << std::endl;
 
-	struct shm_remove
-	 {
-	    shm_remove() { shared_memory_object::remove("kinect1"); }
-	    ~shm_remove(){ shared_memory_object::remove("kinect1"); }
-	 } remover;
+  struct shm_remove
+   {
+      shm_remove() { shared_memory_object::remove("kinect1"); }
+      ~shm_remove(){ shared_memory_object::remove("kinect1"); }
+   } remover;
 
-  	//TODO: this executable should read from Kinect 1 using freenect_grabber and post the frames in an interprocess pooled channel 
-  	freenectServer kserver;
-  	cv::Mat RGB,depth;
+    //TODO: this executable should read from Kinect 1 using freenect_grabber and post the frames in an interprocess pooled channel 
+    freenectServer kserver;
+    cv::Mat RGB,depth;
 
-  	//TODO: at fist try with simple shared memory, then use or modify ipc pooled channel
+    //TODO: at fist try with simple shared memory, then use or modify ipc pooled channel
 
-  	shared_memory_object shm (open_or_create, "kinect1", read_write);
+    shared_memory_object shm (open_or_create, "kinect1", read_write);
 
-  	shm.truncate(sizeof(trace_queue));
+    shm.truncate(sizeof(trace_queue));
 
-  	mapped_region region(shm, read_write);
+    mapped_region region(shm, read_write);
 
-  	void* message_addr = (void*)region.get_address();
+    void* message_addr = (void*)region.get_address();
 
     memset(message_addr, 0, region.get_size());
 
     int w = 640;
     int h = 480;
 
-  	trace_queue * data = new(message_addr) trace_queue(w,h);
+    trace_queue * data = new(message_addr) trace_queue(w,h);
 
-	while (!to_stop)
-  	{
+  while (!to_stop)
+    {
 
-  		kserver.postRGBD(RGB, depth);
+      kserver.postRGBD(RGB, depth);
 
-  		if(!RGB.empty())
-  		{
+      if(!RGB.empty())
+      {
 
   
-  			if(count % 2 == 0)
-  			{
+        if(count % 2 == 0)
+        {
 
-  				//TODO: simply acquire the log
-  				scoped_lock<interprocess_mutex> lock(data->mutex);
+          //TODO: simply acquire the log
+          scoped_lock<interprocess_mutex> lock(data->mutex);
 
-  				memcpy(data->RGB, RGB.data, (w*h*3)*sizeof(uint8_t));
-  				memcpy(data->depth, depth.data, (w*h)*sizeof(uint16_t));
+          memcpy(data->RGB, RGB.data, (w*h*3)*sizeof(uint8_t));
+          memcpy(data->depth, depth.data, (w*h)*sizeof(uint16_t));
 
-  				//Notify that there is someting to read
-  				data->message_in = true;
-  				data->cond_empty.notify_one();
 
-			}
-		}
+          //Notify that there is someting to read
+          data->message_in = true;
+          data->cond_empty.notify_one();
 
-		count ++;
-  	}
+      }
+    }
+
+    count ++;
+    }
 
   return 0;
 }

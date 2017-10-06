@@ -223,7 +223,8 @@ void startK1Stream()
       scoped_lock<interprocess_mutex> lock(data->mutex);
       data->cond_empty.wait(lock);
     }
-    
+
+    //Problem: is it possible to read corrupted data? 
     RGB.data = static_cast<uchar*>(data->RGB);
     depth.data = static_cast<uchar*>(data->depth);
 
