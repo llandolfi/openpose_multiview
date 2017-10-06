@@ -2,12 +2,16 @@
 #include <boost/interprocess/sync/interprocess_condition.hpp>
 
 struct trace_queue
-{
-   enum {max_size = 1920*1080*3 * sizeof(unsigned char)};
+{  
+   enum {queue_size = 5}
+   enum {max_size = queue_size * (1920*1080*3) * sizeof(unsigned char)};
 
    trace_queue(int w, int h)
       :  message_in(false), width_(w), height_(h)
-   {}
+   {
+      to_read_ = 0;
+      to_write_ = 0;
+   }
 
    uint getRGBSize()
    {
@@ -17,6 +21,19 @@ struct trace_queue
    uint getDepthSize()
    {
       return width_ * height_ * 2;
+   }
+
+   short toRead()
+   {
+      short ret = to_read_;
+      to_read_ = (to_read_ + 1) % queue_size;
+      return ret;
+   }
+
+   short toWrite()
+   {
+      short ret = to_write_;
+      to_write_ = (to_write_ + 1) % queue_size;
    }
 
    //Mutex to protect access to the queue
@@ -37,4 +54,10 @@ struct trace_queue
 
    int width_;
    int height_;
+
+   uint64_t time_;
+   uint frame_;
+
+   short to_read_;
+   short to_write_;
 };

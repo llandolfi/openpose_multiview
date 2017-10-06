@@ -5,7 +5,7 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include "shared_memory_log.hpp"
-
+#include <chrono>
 
 bool to_stop = false;
 uint64_t count = 0;
@@ -44,6 +44,8 @@ int main( int argc, char** argv )
 
     trace_queue * data = new(message_addr) trace_queue(w,h);
 
+    uint cur_frame = 0;
+
   while (!to_stop)
     {
 
@@ -57,11 +59,15 @@ int main( int argc, char** argv )
         {
 
           //TODO: simply acquire the log
-          scoped_lock<interprocess_mutex> lock(data->mutex);
-
+          scoped_lock<interprocess_mutex> lock(data->mutex);  
+          cur_frame ++;
           memcpy(data->RGB, RGB.data, (w*h*3)*sizeof(uint8_t));
           memcpy(data->depth, depth.data, (w*h)*sizeof(uint16_t));
+          data->frame_ = cur_frame;
 
+          using namespace std::chrono;
+          milliseconds ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+          data->time_ = ms.count();
 
           //Notify that there is someting to read
           data->message_in = true;

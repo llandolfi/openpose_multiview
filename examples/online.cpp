@@ -228,6 +228,9 @@ void startK1Stream()
     RGB.data = static_cast<uchar*>(data->RGB);
     depth.data = static_cast<uchar*>(data->depth);
 
+    std::cout << "frame: " << data->frame_ << std::endl;
+    std::cout << "Time: " << data->time_ << std::endl;
+
     cv::Mat pnts;
 
     stereoextractor->setDepth(depth);
