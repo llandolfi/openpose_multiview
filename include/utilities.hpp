@@ -61,5 +61,12 @@ void pts2VecofBodies(const cv::Mat & pts1, std::vector<cv::Mat> & bodies_left);
 
 void splitVertically(const cv::Mat & input, cv::Mat & outputleft, cv::Mat & outputright);
 
-double smoothRect(const cv::Mat & disp, int u, int v, int side);
+double MaxPool(const cv::Mat &);
+
+double MinPool(const cv::Mat &);
+
+double AvgPool(const cv::Mat &);
+
+double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(const cv::Mat &)> function);
+
 

@@ -102,7 +102,7 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
   }
 
   if(ver)
-  {
+  { 
     verify(points3D, keep_on);
   }
 
@@ -596,6 +596,8 @@ double DepthExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D)
 
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
+
+  double epsilon = 100;
   //I can take all the points negleting if they belong to a specific person 
   //how can I know if the points belong to the same person? 
   cv::Mat cam0pnts;
@@ -604,20 +606,23 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   std::vector<cv::Point3d> points3D;
   std::vector<cv::Point2d> points2D;
 
-  //If zeros in at least one: remove both 
+   
   filterVisible(cam0pnts, cam0pnts);
 
   //Maybe smooth a little bit like in disparity?
   for( int i = 0; i < cam0pnts.cols; i++)
   { 
     cv::Point2d keypoint = cam0pnts.at<cv::Point2d>(0,i);
+
     cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
-                        smoothRect(depth_, keypoint.x, keypoint.y, 4));
+                        (double)depth_.at<uint16_t>(cvRound(keypoint.x), cvRound(keypoint.y)));
+                        //Pool(depth_, keypoint.x, keypoint.y, 1,MinPool));
 
-    point = point / 1000;
+    double ddepth = depth_.at<uint16_t>(keypoint.x, keypoint.y);
 
-    if(point != cv::Point3d(0,0,0))
+    if(ddepth > 0)
     {
+      point = point / 1000;
       points3D.push_back(point);
       points2D.push_back(keypoint);
     }
@@ -627,13 +632,15 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   cam0pnts = cv::Mat(points2D);
   cv::transpose(cam0pnts, cam0pnts);
 
-  std::cout << "Nose: " << points3D[0] << std::endl;
+  //std::cout << "Nose: " << points3D[0] << std::endl;
 
-  finalpoints = cv::Mat(points3D);
+  cv::Mat tmp = cv::Mat(points3D);
+  finalpoints = tmp.clone();
 
-  return getRMS(cam0pnts,finalpoints);
 
-  return 0.0;
+  double error = getRMS(cam0pnts, finalpoints);
+
+  return error;
 }
 
 void DepthExtractor::process()
@@ -688,7 +695,6 @@ void DepthExtractor::extract(const cv::Mat & m)
 void DepthExtractor::visualize(bool* keep_on)
 {
 
- 
   cv::namedWindow("Keypoints", CV_WINDOW_AUTOSIZE);
   cv::imshow("Keypoints", outputImageL_);
 
@@ -700,7 +706,8 @@ void DepthExtractor::visualize(bool* keep_on)
 }
 
 void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
-{
+{ 
+
   if(pnts.empty())
   {
     return;
@@ -711,8 +718,9 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
 
   cv::Mat verification = RGB_.clone();
+
   for (auto & c : points2D)
-  {
+  { 
     cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
   }
 

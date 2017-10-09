@@ -415,15 +415,34 @@ void equalize(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & outl, cv::Ma
   }
 }
 
-/*
-* Returns the average of the rect of disp having side equal to side
-*/
-double smoothRect(const cv::Mat & disp, int u, int v, int side)
+double MaxPool(const cv::Mat & matrix)
+{ 
+
+  double min,max = 0.0;  
+  cv::minMaxLoc(matrix,&min,&max);
+
+  return max;
+}
+
+double MinPool(const cv::Mat & matrix)
+{
+  double min,max = 0.0;
+  cv::minMaxLoc(matrix,&min,&max);
+
+  return min;
+}
+
+double AvgPool(const cv::Mat & matrix)
 {
 
-  std::cout << "parameters " << std::endl;
+  double sum = cv::sum(matrix)[0];
+  int nonzero = cv::countNonZero(matrix); 
 
-  std::cout << u << " " << v << " " << side << std::endl;
+  return sum / (double)nonzero;
+}
+
+double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(const cv::Mat &)> function)
+{ 
 
   double wlb,hlb;
   double wside,hside;
@@ -434,12 +453,8 @@ double smoothRect(const cv::Mat & disp, int u, int v, int side)
   wside = std::min(disp.cols - u, side);
   hside = std::min(disp.rows - v, side);
 
-  std::cout << wlb << " " << hlb << " " << wside << " " << hside << std::endl;
+  cv::Mat matrix(disp(cv::Rect(wlb,hlb,side,side)));
 
-  cv::Mat matrix(disp(cv::Rect(wlb,hlb,wside,hside)));
-
-  double sum = cv::sum(matrix)[0];
-  int nonzero = cv::countNonZero(matrix); 
-
-  return sum / (double)nonzero;
+  return function(matrix);
 }
+

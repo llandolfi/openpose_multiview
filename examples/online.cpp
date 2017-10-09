@@ -225,7 +225,8 @@ void startK1Stream()
   
   }
 
-  pc.remove();
+  //DO not remove shared memory, server is in charge
+
 }
 
 int main(int argc, char **argv) {
