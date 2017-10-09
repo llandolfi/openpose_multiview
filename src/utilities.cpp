@@ -414,3 +414,32 @@ void equalize(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & outl, cv::Ma
     outr = out1;
   }
 }
+
+/*
+* Returns the average of the rect of disp having side equal to side
+*/
+double smoothRect(const cv::Mat & disp, int u, int v, int side)
+{
+
+  std::cout << "parameters " << std::endl;
+
+  std::cout << u << " " << v << " " << side << std::endl;
+
+  double wlb,hlb;
+  double wside,hside;
+
+  wlb = std::max(0,u - side);
+  hlb = std::max(0,v - side);
+
+  wside = std::min(disp.cols - u, side);
+  hside = std::min(disp.rows - v, side);
+
+  std::cout << wlb << " " << hlb << " " << wside << " " << hside << std::endl;
+
+  cv::Mat matrix(disp(cv::Rect(wlb,hlb,wside,hside)));
+
+  double sum = cv::sum(matrix)[0];
+  int nonzero = cv::countNonZero(matrix); 
+
+  return sum / (double)nonzero;
+}

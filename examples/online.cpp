@@ -24,6 +24,7 @@
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include "shared_memory_log.hpp"
 #include "kinect1/freenect_grabber.hpp"
+#include "ipcpooledchannel.hpp"
 
 /*g++ ./src/stereocam.cpp  -lopenpose -DUSE_CAFFE -lopencv_core -lopencv_highgui -I /usr/local/cuda-8.0/include/ -L /usr/local/cuda-8.0/lib64  -lcudart -lcublas -lcurand -L /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/lib/  -I /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/include/ -lcaffe -DUSE_CUDNN  -std=c++11 -pthread -fPIC -fopenmp -O3 -lcudnn -lglog -lgflags -lboost_system -lboost_filesystem -lm -lboost_thread -luvc  -o prova.a
 */
@@ -197,39 +198,25 @@ void startK1Stream()
 
   std::cout << "k1 client Ready" << std::endl;
 
-  shared_memory_object shm (open_only, "kinect1", read_write);
-
-  mapped_region region
-         (shm                       //What to map
-         ,read_write //Map it as read-write
-         );
-
-  //Get the address of the mapped region
-  void * addr = region.get_address();
-
-  //Obtain a pointer to the shared structure
-  trace_queue * data = static_cast<trace_queue*>(addr);
-
-  cv::Mat RGB(data->height_,data->width_,CV_8UC3);
-  cv::Mat depth(data->height_,data->width_,CV_16UC1);
+  IPCPooledChannel<Payload> pc("kinect1",ReaderTag(),ReadOrderPolicy::Ordered);
 
   stereoextractor->init();
 
   while (keep_on)
   {
    
-    if(!data->message_in)
-    {
-      scoped_lock<interprocess_mutex> lock(data->mutex);
-      data->cond_empty.wait(lock);
-    }
+    Payload * data;
+
+    pc.readerGet(data);
+
+    cv::Mat RGB(data->height_,data->width_,CV_8UC3);
+    cv::Mat depth(data->height_,data->width_,CV_16UC1);
 
     //Problem: is it possible to read corrupted data? 
     RGB.data = static_cast<uchar*>(data->RGB);
     depth.data = static_cast<uchar*>(data->depth);
 
-    std::cout << "frame: " << data->frame_ << std::endl;
-    std::cout << "Time: " << data->time_ << std::endl;
+    pc.readerDone(data);
 
     cv::Mat pnts;
 
@@ -237,6 +224,8 @@ void startK1Stream()
     double error = stereoextractor->go(RGB,FLAGS_verify,pnts,&keep_on);
   
   }
+
+  pc.remove();
 }
 
 int main(int argc, char **argv) {
