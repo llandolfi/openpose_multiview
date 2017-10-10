@@ -24,12 +24,9 @@
 #include <gflags/gflags.h> // DEFINE_bool, DEFINE_int32, DEFINE_int64, DEFINE_uint64, DEFINE_double, DEFINE_string
 #include <glog/logging.h> // google::InitGoogleLogging
 
+
 extern bool keep_on;
 
-
-void splitVertically(const cv::Mat & input, cv::Mat & outputleft, cv::Mat & outputright);
-std::vector<std::string> CSVTokenize(std::string kpl_str);
-void emitCSV(std::ofstream & outputfile, std::string & kp_str, const op::Array<float> & poseKeypoints, int camera);
 
 struct PoseExtractor {
 
@@ -39,7 +36,7 @@ struct PoseExtractor {
 
 	virtual double triangulate(cv::Mat &)=0;
 
-	virtual void process()=0;
+	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize)=0;
 
 	virtual void extract(const cv::Mat &)=0;
 
@@ -53,16 +50,10 @@ struct PoseExtractor {
 
 	virtual void destroy();
 
-	op::Array<float> poseKeypointsL_;
+	OpenPoseParams pose_params_;
 
 	cv::Mat outputImageL_;
-
-	op::CvMatToOpInput *cvMatToOpInput_;
-	op::CvMatToOpOutput *cvMatToOpOutput_;
-	op::PoseExtractorCaffe *poseExtractorCaffeL_;
-	op::PoseRenderer *poseRendererL_;
-	op::OpOutputToCvMat *opOutputToCvMatL_;
-	op::OpOutputToCvMat *opOutputToCvMatR_;
+	op::Array<float> poseKeypointsL_;
 
 	bool inited_;
 
@@ -78,11 +69,11 @@ struct PoseExtractor {
 
 struct DepthExtractor : PoseExtractor {
 
-	DepthExtractor(int argc, char **argv, const std::string resolution);
+	DepthExtractor(int argc, char **argv, const std::string resolution = "640x480");
 
 	virtual double triangulate(cv::Mat &);
 
-	virtual void process();
+	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize);
 
 	virtual void extract(const cv::Mat &);
 
@@ -113,7 +104,7 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	virtual void visualize(bool* keep_on);
 
-	virtual void process();
+	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize);
 
 	virtual void extract(const cv::Mat &);
 
@@ -122,10 +113,10 @@ struct StereoPoseExtractor : PoseExtractor {
 	virtual double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D, bool left = true);
 
 	op::Array<float> poseKeypointsR_;
+	cv::Mat outputImageR_;
 
 	cv::Mat imageleft_;
 	cv::Mat imageright_;
-	cv::Mat outputImageR_;
 
 	StereoCamera cam_;
 

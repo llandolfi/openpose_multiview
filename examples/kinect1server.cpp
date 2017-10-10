@@ -7,9 +7,17 @@
 #include "shared_memory_log.hpp"
 #include "ipcpooledchannel.hpp"
 #include <chrono>
+#include <boost/thread.hpp>
 
 bool to_stop = false;
 uint64_t count = 0;
+
+void wait()
+{
+std::cout << "press a key to terminate " << std::endl;
+ std::cin.get();
+ to_stop = true;
+}
 
 
 int main( int argc, char** argv )
@@ -27,7 +35,9 @@ int main( int argc, char** argv )
 
     uint cur_frame = 0;
 
-    IPCPooledChannel<Payload> pc("kinect1",WriterTag(),3,DiscardPolicy::NoDiscard,argc > 1);
+    IPCPooledChannel<Payload> pc("kinect1",WriterTag(),1,DiscardPolicy::DiscardOld,argc > 1);
+
+    //boost::thread graceterm(wait);
 
   while (!to_stop)
     {
@@ -44,7 +54,7 @@ int main( int argc, char** argv )
           Payload * data = new Payload(640,480);
 
           data = pc.writerGet();
-          
+
           data->width_ = w;
           data->height_ = h;
                

@@ -80,7 +80,7 @@ find_package( OpenCV REQUIRED )
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-find_package( Boost REQUIRED COMPONENTS program_options)
+find_package( Boost REQUIRED COMPONENTS program_options thread)
 
 find_package( Eigen3 REQUIRED )
 find_package( libuvc REQUIRED )

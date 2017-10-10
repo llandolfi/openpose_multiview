@@ -19,6 +19,19 @@
 #include <glog/logging.h> // google::InitGoogleLogging
 
 
+struct OpenPoseParams{
+
+
+	op::CvMatToOpInput *cvMatToOpInput_;
+	op::CvMatToOpOutput *cvMatToOpOutput_;
+	op::PoseExtractorCaffe *poseExtractorCaffeL_;
+	op::PoseRenderer *poseRendererL_;
+	op::OpOutputToCvMat *opOutputToCvMatL_;
+	op::OpOutputToCvMat *opOutputToCvMatR_;
+
+};
+
+
 int getHeight(const std::string & resolution);
 
 int getWidth(const std::string & resolution);
@@ -39,7 +52,7 @@ void opArray2Mat(const op::Array<float> & keypoints, cv::Mat & campnts);
 
 std::vector<std::string> CSVTokenize(std::string kpl_str);
 
-void emitCSV(std::ofstream & outputfile, std::string & kp_str, const op::Array<float> & poseKeypoints, int camera, int cur_frame);
+void emitCSV(std::ofstream & outputfile, const op::Array<float> & poseKeypoints, int camera, int cur_frame);
 
 void filterVisible(const cv::Mat & pntsL, cv::Mat & nzL);
 
@@ -69,4 +82,5 @@ double AvgPool(const cv::Mat &);
 
 double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(const cv::Mat &)> function);
 
+void PoseProcess(const OpenPoseParams & params, const cv::Mat & image, op::Array<float> & poseKeypoints, cv::Mat & outputImage);
 

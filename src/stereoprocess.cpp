@@ -4,7 +4,6 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <math.h>
 
-
 // See all the available parameter options withe the `--help` flag. E.g. `./build/examples/openpose/openpose.bin --help`.
 // Note: This command will show you flags for other unnecessary 3rdparty files. Check only the flags for the OpenPose
 // executable. E.g. for `openpose.bin`, look for `Flags from examples/openpose/openpose.cpp:`.
@@ -77,14 +76,14 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
 
   // Step 3 - Initialize all required classes
-  cvMatToOpInput_ = new op::CvMatToOpInput{netInputSize, FLAGS_scale_number, (float)FLAGS_scale_gap};
-  cvMatToOpOutput_ = new op::CvMatToOpOutput{outputSize};
-  poseExtractorCaffeL_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
+  pose_params_.cvMatToOpInput_ = new op::CvMatToOpInput{netInputSize, FLAGS_scale_number, (float)FLAGS_scale_gap};
+  pose_params_.cvMatToOpOutput_ = new op::CvMatToOpOutput{outputSize};
+  pose_params_.poseExtractorCaffeL_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
                                                 FLAGS_model_folder, FLAGS_num_gpu_start};
-  poseRendererL_ = new op::PoseRenderer{netOutputSize, outputSize, poseModel, nullptr, (float)FLAGS_render_threshold,
+  pose_params_.poseRendererL_ = new op::PoseRenderer{netOutputSize, outputSize, poseModel, nullptr, (float)FLAGS_render_threshold,
                                     !FLAGS_disable_blending, (float)FLAGS_alpha_pose};
-  opOutputToCvMatL_ = new op::OpOutputToCvMat{outputSize};
-  opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
+  pose_params_.opOutputToCvMatL_ = new op::OpOutputToCvMat{outputSize};
+  pose_params_.opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
 }
 
 double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points3D, bool* keep_on)
@@ -92,7 +91,7 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
 
   extract(image);
 
-  process();
+  process(FLAGS_write_video, FLAGS_write_keypoint, FLAGS_visualize);
  
   double error = triangulate(points3D);
 
@@ -113,8 +112,8 @@ void PoseExtractor::init()
 {
   if (inited_ == false)
   {
-    poseExtractorCaffeL_->initializationOnThread();
-    poseRendererL_->initializationOnThread();
+    pose_params_.poseExtractorCaffeL_->initializationOnThread();
+    pose_params_.poseRendererL_->initializationOnThread();
     inited_ = true;
   }
 }
@@ -240,58 +239,26 @@ void StereoPoseExtractor::extract(const cv::Mat & image)
 }
 
 //TODO: save time by using OpenPose in a single image? 
-void StereoPoseExtractor::process()
+void StereoPoseExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
 {
 
-  op::Array<float> netInputArrayL;
-  op::Array<float> netInputArrayR;
+  PoseProcess(pose_params_, imageleft_, poseKeypointsL_, outputImageL_);
+  PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
 
-  op::Array<float> outputArrayL;
-  op::Array<float> outputArrayR;
-
-  std::vector<float> scaleRatiosL;
-  std::vector<float> scaleRatiosR;
-
-  double scaleInputToOutputL;
-  double scaleInputToOutputR;
-
-  std::tie(netInputArrayL, scaleRatiosL) = cvMatToOpInput_->format(imageleft_);
-  std::tie(scaleInputToOutputL, outputArrayL) = cvMatToOpOutput_->format(imageleft_);
-  std::tie(netInputArrayR, scaleRatiosR) = cvMatToOpInput_->format(imageright_);
-  std::tie(scaleInputToOutputR, outputArrayR) = cvMatToOpOutput_->format(imageright_);
-
-  // Step 3 - Estimate poseKeypoints
-  poseExtractorCaffeL_->forwardPass(netInputArrayL, {imageleft_.cols, imageleft_.rows}, scaleRatiosL);
-  poseKeypointsL_ = poseExtractorCaffeL_->getPoseKeypoints();
-
-  poseExtractorCaffeL_->forwardPass(netInputArrayR, {imageright_.cols, imageright_.rows}, scaleRatiosR);
-  poseKeypointsR_ = poseExtractorCaffeL_->getPoseKeypoints();
-
-  std::string kpl_str = poseKeypointsL_.toString();
-  std::string kpr_str = poseKeypointsR_.toString();
-
-  // Step 4 - Render poseKeypoints
-  poseRendererL_->renderPose(outputArrayL, poseKeypointsL_);
-  poseRendererL_->renderPose(outputArrayR, poseKeypointsR_);    
-  
-  // Step 5 - OpenPose output format to cv::Mat
-  outputImageL_ = opOutputToCvMatL_->formatToCvMat(outputArrayL);
-  outputImageR_ = opOutputToCvMatL_->formatToCvMat(outputArrayR);
-
-  if( FLAGS_write_video != "")
+  if( write_video != "")
   { 
     cv::Mat sidebyside_in;
     cv::hconcat(imageleft_, imageright_, sidebyside_in);
     outputVideo_ << sidebyside_in;
   }
 
-  if( FLAGS_write_keypoint != "")
+  if( write_keypoint != "")
   {
-    emitCSV(outputfile_, kpl_str, poseKeypointsL_, 0, cur_frame_);
-    emitCSV(outputfile_, kpr_str, poseKeypointsR_, 1, cur_frame_);
+    emitCSV(outputfile_, poseKeypointsL_, 0, cur_frame_);
+    emitCSV(outputfile_, poseKeypointsR_, 1, cur_frame_);
   }
 
-  if( FLAGS_visualize)
+  if( viz)
   {
     visualize(&keep_on);
   }
@@ -526,215 +493,4 @@ void PoseExtractorFromFile::getPoints(cv::Mat & outputL, cv::Mat & outputR)
   vector2Mat(points_right_, outputR);
 }
 
-DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
-{
 
-  // Step 2 - Read Google flags (user defined configuration)
-  // outputSize
-  const auto outputSize = op::flagsToPoint("640x480", "640x480");
-  // netInputSize
-  const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "640x480");
-  // netOutputSize
-  const auto netOutputSize = netInputSize;
-  // poseModel
-  const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
-
-  // Step 3 - Initialize all required classes
-  cvMatToOpInput_ = new op::CvMatToOpInput{netInputSize, FLAGS_scale_number, (float)FLAGS_scale_gap};
-  cvMatToOpOutput_ = new op::CvMatToOpOutput{outputSize};
-  poseExtractorCaffeL_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
-                                                FLAGS_model_folder, FLAGS_num_gpu_start};
-  poseRendererL_ = new op::PoseRenderer{netOutputSize, outputSize, poseModel, nullptr, (float)FLAGS_render_threshold,
-                                    !FLAGS_disable_blending, (float)FLAGS_alpha_pose};
-  opOutputToCvMatL_ = new op::OpOutputToCvMat{outputSize};
-  opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
-
-  pcam_ = new DepthCamera();
-}
-
-/*
-* x: point coordinate in pixel
-* y: point coordinate in pixel
-* d: disparity at point (x,y)
-*/
-cv::Point3d DepthExtractor::getPointFromDepth(double u, double v, double z)
-{
-
-  if(z == 0.0)
-  {
-    return cv::Point3d(0,0,0);
-  }
-
-  double fx = pcam_->intrinsics_.at<double>(0,0);
-  double fy = pcam_->intrinsics_.at<double>(1,1);
-  double cx = pcam_->intrinsics_.at<double>(0,2);
-  double cy = pcam_->intrinsics_.at<double>(1,2);
-
-  double Z = z;
-  double X = ((u - cx) * Z)/fx;
-  double Y = ((v - cy) * Z)/fy;
-
-  return cv::Point3d(X,Y,Z);
-
-}
-
-double DepthExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D)
-{
-  if(pnts3D.empty())
-  {
-    return 0.0;
-  }
-
-  cv::Mat points2D; 
-
-  cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
-
-  cv::transpose(points2D,points2D);
-
-  return cv::norm(points2D - cam0pnts);
-}
-
-double DepthExtractor::triangulate(cv::Mat & finalpoints)
-{ 
-
-  double epsilon = 100;
-  //I can take all the points negleting if they belong to a specific person 
-  //how can I know if the points belong to the same person? 
-  cv::Mat cam0pnts;
-  opArray2Mat(poseKeypointsL_, cam0pnts);
-
-  std::vector<cv::Point3d> points3D;
-  std::vector<cv::Point2d> points2D;
-
-   
-  filterVisible(cam0pnts, cam0pnts);
-
-  //Maybe smooth a little bit like in disparity?
-  for( int i = 0; i < cam0pnts.cols; i++)
-  { 
-    cv::Point2d keypoint = cam0pnts.at<cv::Point2d>(0,i);
-
-    cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
-                        (double)depth_.at<uint16_t>(cvRound(keypoint.x), cvRound(keypoint.y)));
-                        //Pool(depth_, keypoint.x, keypoint.y, 1,MinPool));
-
-    double ddepth = depth_.at<uint16_t>(keypoint.x, keypoint.y);
-
-    if(ddepth > 0)
-    {
-      point = point / 1000;
-      points3D.push_back(point);
-      points2D.push_back(keypoint);
-    }
-  }
-
-  //TODO: remove zeros also from points3D and the correspondent from points 2D
-  cam0pnts = cv::Mat(points2D);
-  cv::transpose(cam0pnts, cam0pnts);
-
-  //std::cout << "Nose: " << points3D[0] << std::endl;
-
-  cv::Mat tmp = cv::Mat(points3D);
-  finalpoints = tmp.clone();
-
-
-  double error = getRMS(cam0pnts, finalpoints);
-
-  return error;
-}
-
-void DepthExtractor::process()
-{
-
-  op::Array<float> netInputArrayL;
-
-  op::Array<float> outputArrayL;
-
-  std::vector<float> scaleRatiosL;
-
-  double scaleInputToOutputL;
-
-  std::tie(netInputArrayL, scaleRatiosL) = cvMatToOpInput_->format(RGB_);
-  std::tie(scaleInputToOutputL, outputArrayL) = cvMatToOpOutput_->format(RGB_);
-
-  // Step 3 - Estimate poseKeypoints
-  poseExtractorCaffeL_->forwardPass(netInputArrayL, {RGB_.cols, RGB_.rows}, scaleRatiosL);
-
-  poseKeypointsL_ = poseExtractorCaffeL_->getPoseKeypoints();
-
-  std::string kpl_str = poseKeypointsL_.toString();
-
-  // Step 4 - Render poseKeypoints
-  poseRendererL_->renderPose(outputArrayL, poseKeypointsL_);
-  
-  // Step 5 - OpenPose output format to cv::Mat
-  outputImageL_ = opOutputToCvMatL_->formatToCvMat(outputArrayL);
-
-  if( FLAGS_write_video != "")
-  { 
-    outputVideo_ << RGB_;
-  }
-
-  if( FLAGS_write_keypoint != "")
-  {
-    emitCSV(outputfile_, kpl_str, poseKeypointsL_, 0, cur_frame_);
-  }
-
-  if( FLAGS_visualize)
-  {
-    visualize(&keep_on);
-  }
-}
-
-void DepthExtractor::extract(const cv::Mat & m)
-{  
-  cur_frame_ ++;
-  RGB_ = m;
-}
-
-void DepthExtractor::visualize(bool* keep_on)
-{
-
-  cv::namedWindow("Keypoints", CV_WINDOW_AUTOSIZE);
-  cv::imshow("Keypoints", outputImageL_);
-
-  int k = cvWaitKey(2);
-  if (k == 27)
-  {
-      *keep_on = false;
-  }
-}
-
-void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
-{ 
-
-  if(pnts.empty())
-  {
-    return;
-  }
-
-  std::vector<cv::Point2d> points2D(pnts.cols);
-
-  cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
-
-  cv::Mat verification = RGB_.clone();
-
-  for (auto & c : points2D)
-  { 
-    cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
-  }
-
-
-  cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
-  cv::imshow("Verification", verification);
-  
-  int k = cvWaitKey(2);
-  if (k == 27)
-  {
-      *keep_on = false;
-  }
-  if (k == 's')
-  {
-    cv:imwrite("../data/3Dpoints.jpg", verification);
-  }
-}

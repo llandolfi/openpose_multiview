@@ -216,17 +216,15 @@ void startK1Stream()
     RGB.data = static_cast<uchar*>(data->RGB);
     depth.data = static_cast<uchar*>(data->depth);
 
-    pc.readerDone(data);
-
     cv::Mat pnts;
 
     stereoextractor->setDepth(depth);
     double error = stereoextractor->go(RGB,FLAGS_verify,pnts,&keep_on);
+
+    pc.readerDone(data);
   
   }
-
   //DO not remove shared memory, server is in charge
-
 }
 
 int main(int argc, char **argv) {
@@ -259,9 +257,7 @@ int main(int argc, char **argv) {
               std::cout << "Streaming from Kinect 1" << std::endl;
               std::cout << "Using depht " << std::endl;
 
-              FLAGS_resolution = "640x480";
-
-              stereoextractor = new DepthExtractor(argc, argv, FLAGS_resolution);
+              stereoextractor = new DepthExtractor(argc, argv);
               startK1Stream();
     }
   }

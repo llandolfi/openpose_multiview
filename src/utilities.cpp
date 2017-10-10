@@ -114,8 +114,9 @@ std::vector<std::string> CSVTokenize(std::string kpl_str)
   return vec;
 }
 
-void emitCSV(std::ofstream & outputfile, std::string & kp_str, const op::Array<float> & poseKeypoints, int camera, int cur_frame)
-{ 
+void emitCSV(std::ofstream & outputfile, const op::Array<float> & poseKeypoints, int camera, int cur_frame)
+{  
+   std::string kp_str = poseKeypoints.toString();
    std::vector<std::string> tokens = CSVTokenize(kp_str);
 
    std::cout << "number of strings " << tokens.size() << std::endl;
@@ -456,5 +457,31 @@ double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(c
   cv::Mat matrix(disp(cv::Rect(wlb,hlb,side,side)));
 
   return function(matrix);
+}
+
+void PoseProcess(const OpenPoseParams & params, const cv::Mat & image, op::Array<float> & poseKeypoints, cv::Mat & outputImage)
+{
+                 
+  op::Array<float> netInputArrayL;
+
+  op::Array<float> outputArrayL;
+
+  std::vector<float> scaleRatiosL;
+
+  double scaleInputToOutputL;
+
+  std::tie(netInputArrayL, scaleRatiosL) = params.cvMatToOpInput_->format(image);
+  std::tie(scaleInputToOutputL, outputArrayL) = params.cvMatToOpOutput_->format(image);
+
+  // Step 3 - Estimate poseKeypoints
+  params.poseExtractorCaffeL_->forwardPass(netInputArrayL, {image.cols, image.rows}, scaleRatiosL);
+
+  poseKeypoints = params.poseExtractorCaffeL_->getPoseKeypoints();
+
+  // Step 4 - Render poseKeypoints
+  params.poseRendererL_->renderPose(outputArrayL, poseKeypoints);
+  
+  // Step 5 - OpenPose output format to cv::Mat
+  outputImage = params.opOutputToCvMatL_->formatToCvMat(outputArrayL);
 }
 
