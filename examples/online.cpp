@@ -232,46 +232,59 @@ int main(int argc, char **argv) {
   // Parsing command line flags
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  switch(camera_map[FLAGS_camera])
+  {
+    case 0: 
+            std::cout << "Streaming from ZED" << std::endl;
+
+            if(FLAGS_disparity == true)
+            {
+              std::cout << "Using disparity " << std::endl;
+              stereoextractor = new DisparityExtractor(argc, argv, FLAGS_resolution);
+            }
+            else
+            {
+              std::cout << "Using triangulation " << std::endl;
+              stereoextractor = new StereoPoseExtractor(argc, argv, FLAGS_resolution);
+            }
+            break;
+    case 1: 
+            std::cout << "Streaming from Kinect 1" << std::endl;
+            std::cout << "Using depht " << std::endl;
+            stereoextractor = new DepthExtractor(argc, argv);
+            break;
+  }
+
+
+
   if( FLAGS_video == "" )
   {
 
     switch(camera_map[FLAGS_camera])
     {
       case 0: 
-              std::cout << "Streaming from ZED" << std::endl;
-
-              if(FLAGS_disparity == true)
-              {
-                std::cout << "Using disparity " << std::endl;
-                stereoextractor = new DisparityExtractor(argc, argv, FLAGS_resolution);
-              }
-              else
-              {
-                std::cout << "Using triangulation " << std::endl;
-                stereoextractor = new StereoPoseExtractor(argc, argv, FLAGS_resolution);
-              }
 
               startZedStream();
+              break;
 
       case 1: 
-              std::cout << "Streaming from Kinect 1" << std::endl;
-              std::cout << "Using depht " << std::endl;
-
-              stereoextractor = new DepthExtractor(argc, argv);
               startK1Stream();
+              break;
     }
   }
 
   else
   {
+
     /*use a videocapture and get keypoints from it. Assumes the video is a stereo video*/
     cv::VideoCapture cap(FLAGS_video);
+
     if( !cap.isOpened())
     {
       std::cout << "Could not read video file. Exiting." << std::endl;
       return -1;
     }
-      
+
     stereoextractor->init();
 
     while(keep_on)

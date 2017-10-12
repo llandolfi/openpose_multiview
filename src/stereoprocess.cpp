@@ -89,11 +89,13 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
 double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points3D, bool* keep_on)
 { 
 
+  double error = 0.0;  
+
   extract(image);
 
   process(FLAGS_write_video, FLAGS_write_keypoint, FLAGS_visualize);
- 
-  double error = triangulate(points3D);
+
+  error = triangulate(points3D);
 
   if( FLAGS_show_error)
   {
@@ -244,6 +246,7 @@ void StereoPoseExtractor::process(const std::string & write_video, const std::st
 
   PoseProcess(pose_params_, imageleft_, poseKeypointsL_, outputImageL_);
   PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
+
 
   if( write_video != "")
   { 

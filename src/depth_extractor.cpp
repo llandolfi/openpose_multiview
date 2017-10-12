@@ -104,8 +104,8 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 }
 
 void DepthExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
-{
-
+{ 
+  
   PoseProcess(pose_params_, RGB_, poseKeypointsL_, outputImageL_);
 
   if( write_video != "")
