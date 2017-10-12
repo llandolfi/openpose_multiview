@@ -149,6 +149,32 @@ StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::strin
 
 }
 
+DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
+{
+
+  pcam_ = new DepthCamera();
+
+  if (FLAGS_write_video != "")
+  { 
+
+    cv::Size S = cv::Size(640, 480);
+    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), 7, S, true);
+    if (!outputVideo_.isOpened())
+    {
+        std::cout  << "Could not open the output video for write: " << std::endl;
+        exit(-1);
+    }
+  
+    std::string depthpath = FLAGS_write_video + "depth.avi";
+    depthoutput_.open(depthpath, CV_FOURCC('M','J','P','G'), 7, S, true);
+    if (!depthoutput_.isOpened())
+    {
+        std::cout  << "Could not open the depth output video for write: " << std::endl;
+        exit(-1);
+    }
+  }
+}
+
 void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints)
 {
   int N = 0;

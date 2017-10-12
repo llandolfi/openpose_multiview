@@ -276,6 +276,9 @@ int main(int argc, char **argv) {
   else
   {
 
+    stereoextractor->live_ = false;
+    stereoextractor->videoname_ = FLAGS_video;
+
     /*use a videocapture and get keypoints from it. Assumes the video is a stereo video*/
     cv::VideoCapture cap(FLAGS_video);
 

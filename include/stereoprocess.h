@@ -65,6 +65,9 @@ struct PoseExtractor {
 	PinholeCamera * pcam_;
 
 	cv::Mat depth_;
+
+	bool live_ = true;
+	std::string videoname_ = "";
 };
 
 struct DepthExtractor : PoseExtractor {
@@ -86,6 +89,10 @@ struct DepthExtractor : PoseExtractor {
 	cv::Point3d getPointFromDepth(double u, double v, double z);
 
 	cv::Mat RGB_;
+
+	cv::VideoWriter depthoutput_; 
+
+	cv::VideoCapture depthcap_;
 
 };
 

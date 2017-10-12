@@ -4,13 +4,7 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <math.h>
 
-
-
-DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
-{
-
-  pcam_ = new DepthCamera();
-}
+bool inited = false;
 
 /*
 * x: point coordinate in pixel
@@ -102,15 +96,73 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
   return error;
 }
+/**
+* Converts depth into RGB image for MPEG encoding
+*/
+void encodeDepth(const cv::Mat & depth, cv::Mat & output)
+{
+  cv::Mat dc1 = cv::Mat(depth.rows, depth.cols, CV_8UC1);
+  cv::Mat dc2 = cv::Mat(depth.rows, depth.cols, CV_8UC1);
+  cv::Mat dummy = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC1);
+
+  for (int i=0; i < depth.rows; i++)
+  {
+    for(int j=0; j < depth.cols; j++)
+    {
+      uint16_t val = depth.at<uint16_t>(i,j);
+      uint8_t * ptr = (uint8_t*)&val;
+
+      dc1.at<uint8_t>(i,j) = ptr[0];
+      dc2.at<uint8_t>(i,j) = ptr[1];
+
+    }
+  }
+
+  std::vector<cv::Mat> channels;
+  channels.push_back(dc1);
+  channels.push_back(dc2);
+  channels.push_back(dummy);
+
+  cv::merge(channels, output);
+}
+
+/**
+* Decodes an encoded depth frame from kinect
+*/
+void decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
+{
+
+  depth = cv::Mat(rgb.rows, rgb.cols, CV_16UC1);
+  uint8_t buf[2];
+  uint16_t * decodecptr = (uint16_t*)&buf;
+
+  for (int i=0; i < depth.rows; i++)
+  {
+    for(int j=0; j < depth.cols; j++)
+    {
+      cv::Vec3b value = rgb.at<cv::Vec3b>(i,j);
+      buf[0] = value[0];
+      buf[1] = value[1];
+
+      depth.at<uint16_t>(i,j) = *decodecptr;
+    }
+  }
+}
 
 void DepthExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
 { 
-  
+
   PoseProcess(pose_params_, RGB_, poseKeypointsL_, outputImageL_);
 
   if( write_video != "")
   { 
     outputVideo_ << RGB_;
+
+    //convert depth in normal codec: from single channel 16 bit 
+    cv::Mat depthtosave;
+    encodeDepth(depth_, depthtosave);
+
+    depthoutput_ << depthtosave; 
   }
 
   if( write_keypoint != "")
@@ -125,9 +177,37 @@ void DepthExtractor::process(const std::string & write_video, const std::string 
 }
 
 void DepthExtractor::extract(const cv::Mat & m)
-{  
+{ 
+
   cur_frame_ ++;
   RGB_ = m;
+
+  if(!live_)
+  {
+
+    if(!inited)
+    {
+      //TODO: set up a videocapture for the depth video
+      depthcap_ = cv::VideoCapture(videoname_ + "depth.avi");
+      if( !depthcap_.isOpened())
+      {
+        std::cout << "Could not read depth video file. Exiting." << std::endl;
+        exit(-1);
+      }
+    }
+
+    cv::Mat tmpdepth;
+    depthcap_ >> tmpdepth;
+
+    std::cout << "depth frame captured " << std::endl;
+    std::cout << tmpdepth.rows << " " << tmpdepth.cols << std::endl;
+
+    decodeDepth(tmpdepth, depth_);
+
+    std::cout << "depth frame decoded " << std::endl;
+    std::cout << depth_.cols << " " << depth_.rows << std::endl;
+  }
+
 }
 
 void DepthExtractor::visualize(bool* keep_on)
