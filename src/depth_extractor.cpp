@@ -199,13 +199,7 @@ void DepthExtractor::extract(const cv::Mat & m)
     cv::Mat tmpdepth;
     depthcap_ >> tmpdepth;
 
-    std::cout << "depth frame captured " << std::endl;
-    std::cout << tmpdepth.rows << " " << tmpdepth.cols << std::endl;
-
     decodeDepth(tmpdepth, depth_);
-
-    std::cout << "depth frame decoded " << std::endl;
-    std::cout << depth_.cols << " " << depth_.rows << std::endl;
   }
 
 }
