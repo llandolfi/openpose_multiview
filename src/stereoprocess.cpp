@@ -69,7 +69,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   // outputSize
   const auto outputSize = op::flagsToPoint(resolution, "1280x720");
   // netInputSize
-  const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "656x368");
+  const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "640x480");
   // netOutputSize
   const auto netOutputSize = netInputSize;
   // poseModel
