@@ -3,7 +3,8 @@
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <math.h>
-
+#include <boost/system/error_code.hpp>
+#include <json/json.h>
 // See all the available parameter options withe the `--help` flag. E.g. `./build/examples/openpose/openpose.bin --help`.
 // Note: This command will show you flags for other unnecessary 3rdparty files. Check only the flags for the OpenPose
 // executable. E.g. for `openpose.bin`, look for `Flags from examples/openpose/openpose.cpp:`.
@@ -44,8 +45,10 @@ DEFINE_bool(visualize,                  false,          "Visualize keypoints");
 
 DEFINE_bool(show_error,                 false,           "Show the reprojection error on terminal");
 
+DEFINE_int32(stream_udp,                  0,               "Stream body data points in JSON format to defined port");
 
-PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution)
+
+PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution) : udpstreamer_(FLAGS_stream_udp)
 {
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -53,7 +56,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   inited_ = false;
   cur_frame_ = 0;
 
-  if (FLAGS_write_keypoint != "")
+  if(FLAGS_write_keypoint != "")
   {
     outputfile_.open(FLAGS_write_keypoint);
     //TODO:write header of outputfilef
@@ -63,6 +66,11 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
       outputfile_ << "p" << i << "x" << " p" << i << "y" << " p" << i << "conf ";
     }
     outputfile_ << "\n";
+  }
+
+  if(FLAGS_stream_udp != 0)
+  {
+
   }
 
   // Step 2 - Read Google flags (user defined configuration)
@@ -86,6 +94,32 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   pose_params_.opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
 }
 
+std::string pnts2JSON(const cv::Mat & pnts, int frame)
+{
+
+  Json::Value points;
+  
+  for(int i; i < pnts.cols; i++)
+  {
+    cv::Vec3d point = pnts.at<cv::Vec3d>(0,i);
+    Json::Value jpoint;
+    jpoint["x"] = point[0];
+    jpoint["y"] = point[1];
+    jpoint["z"] = point[2];
+    points.append(jpoint);
+  }
+
+  Json::Value root;
+  root["type"] = "bodypoints";
+  root["frame"] = frame;
+  root["pointorder"] = "openpose";
+  root["points"] = points;
+  //TODO: consistent timestamp also for ZED
+
+  Json::StyledWriter writer;
+  return writer.write(root);
+}
+
 double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points3D, bool* keep_on)
 { 
 
@@ -96,6 +130,12 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
   process(FLAGS_write_video, FLAGS_write_keypoint, FLAGS_visualize);
 
   error = triangulate(points3D);
+
+  if(FLAGS_stream_udp != 0)
+  {
+    //TODO: generate JSON message, send with updstreamer
+    udpstreamer_.sendMessage(pnts2JSON(points3D, cur_frame_));
+  }
 
   if( FLAGS_show_error)
   {
@@ -266,11 +306,17 @@ void StereoPoseExtractor::extract(const cv::Mat & image)
 
 }
 
+void PoseExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
+{
+  PoseProcess(pose_params_, imageleft_, poseKeypointsL_, outputImageL_);
+}
+
 //TODO: save time by using OpenPose in a single image? 
 void StereoPoseExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
 {
 
-  PoseProcess(pose_params_, imageleft_, poseKeypointsL_, outputImageL_);
+  PoseExtractor::process(write_video, write_keypoint, viz);
+  
   PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
 
 
@@ -300,7 +346,7 @@ void StereoPoseExtractor::getPoints(cv::Mat & outputL, cv::Mat & outputR)
 }
 
 /*
-*   
+* Returns the 3D points from stereo couples acquired from stereo camera  
 */
 double StereoPoseExtractor::triangulate(cv::Mat & finalpoints)
 { 

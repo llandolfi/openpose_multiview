@@ -143,7 +143,6 @@ void decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
       cv::Vec3b value = rgb.at<cv::Vec3b>(i,j);
       buf[0] = value[0];
       buf[1] = value[1];
-
       depth.at<uint16_t>(i,j) = *decodecptr;
     }
   }

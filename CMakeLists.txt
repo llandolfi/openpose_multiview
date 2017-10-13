@@ -80,7 +80,7 @@ find_package( OpenCV REQUIRED )
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-find_package( Boost REQUIRED COMPONENTS program_options thread)
+find_package( Boost REQUIRED COMPONENTS program_options thread system)
 
 find_package( Eigen3 REQUIRED )
 find_package( libuvc REQUIRED )
@@ -100,7 +100,7 @@ if (CUDA_FOUND)
 
     file(GLOB STEREO_SOURCES src/*.cpp)
 
-    ADD_LIBRARY( stereoutils SHARED ${STEREO_SOURCES} )
+    ADD_LIBRARY( stereoutils  ${STEREO_SOURCES} )
 
     TARGET_LINK_LIBRARIES( stereoutils
         ${CUDA_LIBS}
@@ -111,6 +111,7 @@ if (CUDA_FOUND)
         glog
         gflags
         openpose
+        jsoncpp
     )
 
     #install library 

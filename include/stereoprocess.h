@@ -20,6 +20,7 @@
 #include <openpose/utilities/headers.hpp>
 #include "utilities.hpp"
 #include "stereo_cam.h"
+#include "netutils.hpp"
 #include <opencv2/cudastereo.hpp>
 #include <gflags/gflags.h> // DEFINE_bool, DEFINE_int32, DEFINE_int64, DEFINE_uint64, DEFINE_double, DEFINE_string
 #include <glog/logging.h> // google::InitGoogleLogging
@@ -36,7 +37,7 @@ struct PoseExtractor {
 
 	virtual double triangulate(cv::Mat &)=0;
 
-	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize)=0;
+	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize);
 
 	virtual void extract(const cv::Mat &)=0;
 
@@ -49,6 +50,8 @@ struct PoseExtractor {
 	virtual void init();
 
 	virtual void destroy();
+
+	cv::Mat imageleft_;
 
 	OpenPoseParams pose_params_;
 
@@ -68,6 +71,8 @@ struct PoseExtractor {
 
 	bool live_ = true;
 	std::string videoname_ = "";
+
+	UDPStreamer udpstreamer_;
 };
 
 struct DepthExtractor : PoseExtractor {
@@ -122,7 +127,6 @@ struct StereoPoseExtractor : PoseExtractor {
 	op::Array<float> poseKeypointsR_;
 	cv::Mat outputImageR_;
 
-	cv::Mat imageleft_;
 	cv::Mat imageright_;
 
 	StereoCamera cam_;
