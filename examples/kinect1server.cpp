@@ -64,7 +64,7 @@ int main( int argc, char** argv )
           memcpy(data->depth, depth.data, (w*h)*sizeof(uint16_t));
           data->frame_ = cur_frame;
 
-          data->time_ = std::chrono::high_resolution_clock::now();
+          data->time_ = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
           pc.writerDone(data);
 

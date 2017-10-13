@@ -21,6 +21,7 @@
 #include "utilities.hpp"
 #include "stereo_cam.h"
 #include "netutils.hpp"
+#include <chrono>
 #include <opencv2/cudastereo.hpp>
 #include <gflags/gflags.h> // DEFINE_bool, DEFINE_int32, DEFINE_int64, DEFINE_uint64, DEFINE_double, DEFINE_string
 #include <glog/logging.h> // google::InitGoogleLogging
@@ -33,7 +34,7 @@ struct PoseExtractor {
 
 	PoseExtractor(int argc, char **argv, const std::string resolution);
 
-	virtual double go(const cv::Mat & image, const bool verify, cv::Mat &, bool* keep_on);
+	virtual double go(const cv::Mat & image, const bool verify, cv::Mat &, bool* keep_on, std::chrono::milliseconds & time);
 
 	virtual double triangulate(cv::Mat &)=0;
 

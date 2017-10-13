@@ -25,6 +25,7 @@
 #include "shared_memory_log.hpp"
 #include "kinect1/freenect_grabber.hpp"
 #include "ipcpooledchannel.hpp"
+#include <chrono>
 
 /*g++ ./src/stereocam.cpp  -lopenpose -DUSE_CAFFE -lopencv_core -lopencv_highgui -I /usr/local/cuda-8.0/include/ -L /usr/local/cuda-8.0/lib64  -lcudart -lcublas -lcurand -L /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/lib/  -I /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/include/ -lcaffe -DUSE_CUDNN  -std=c++11 -pthread -fPIC -fopenmp -O3 -lcudnn -lglog -lgflags -lboost_system -lboost_filesystem -lm -lboost_thread -luvc  -o prova.a
 */
@@ -85,8 +86,10 @@ void cb(uvc_frame_t *frame, void *ptr) {
 
   cv::Mat pnts;
   cv::Mat image = cv::cvarrToMat(cvImg);
+  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
-  double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on);
+
+  double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on,time);
   //std::cout << "error " << error << std::endl;
    
   cvReleaseImageHeader(&cvImg);
@@ -215,11 +218,13 @@ void startK1Stream()
     //Problem: is it possible to read corrupted data? 
     RGB.data = static_cast<uchar*>(data->RGB);
     depth.data = static_cast<uchar*>(data->depth);
+    std::chrono::milliseconds time = data->time_;
 
     cv::Mat pnts;
 
     stereoextractor->setDepth(depth);
-    double error = stereoextractor->go(RGB,FLAGS_verify,pnts,&keep_on);
+    double error = stereoextractor->go(RGB,FLAGS_verify,pnts,&keep_on,time);
+
 
     pc.readerDone(data);
   
@@ -295,8 +300,8 @@ int main(int argc, char **argv) {
 
       cv::Mat image,pnts;
       cap >> image;
-
-      double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on);
+      auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+      double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on,time);
     }
 
   } 

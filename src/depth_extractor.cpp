@@ -90,7 +90,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
   cv::Mat tmp = cv::Mat(points3D);
   finalpoints = tmp.clone();
-
+  cv::transpose(finalpoints, finalpoints);
 
   double error = getRMS(cam0pnts, finalpoints);
 

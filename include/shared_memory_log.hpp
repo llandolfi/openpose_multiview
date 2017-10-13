@@ -2,6 +2,7 @@
 #include <boost/interprocess/sync/interprocess_condition.hpp>
 #include <chrono>
 
+
 struct Payload
 {  
    enum {max_size = (480*640) * sizeof(unsigned char)};
@@ -29,6 +30,6 @@ struct Payload
    int width_;
    int height_;
 
-   std::chrono::time_point<std::chrono::high_resolution_clock> time_;
+   std::chrono::milliseconds time_;
    uint frame_;
 };

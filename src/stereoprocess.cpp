@@ -94,7 +94,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   pose_params_.opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
 }
 
-std::string pnts2JSON(const cv::Mat & pnts, int frame)
+std::string pnts2JSON(const cv::Mat & pnts, int frame, std::chrono::milliseconds & time)
 {
 
   Json::Value points;
@@ -114,13 +114,14 @@ std::string pnts2JSON(const cv::Mat & pnts, int frame)
   root["frame"] = frame;
   root["pointorder"] = "openpose";
   root["points"] = points;
+  root["timestamp"] = std::to_string(time.count());
   //TODO: consistent timestamp also for ZED
 
   Json::StyledWriter writer;
   return writer.write(root);
 }
 
-double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points3D, bool* keep_on)
+double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points3D, bool* keep_on, std::chrono::milliseconds & time)
 { 
 
   double error = 0.0;  
@@ -134,7 +135,7 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
   if(FLAGS_stream_udp != 0)
   {
     //TODO: generate JSON message, send with updstreamer
-    udpstreamer_.sendMessage(pnts2JSON(points3D, cur_frame_));
+    udpstreamer_.sendMessage(pnts2JSON(points3D, cur_frame_, time));
   }
 
   if( FLAGS_show_error)
