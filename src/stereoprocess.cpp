@@ -68,10 +68,11 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
     outputfile_ << "\n";
   }
 
-  if(FLAGS_stream_udp != 0)
+  if(FLAGS_write_video != "")
   {
-
+    timefile_.open(FLAGS_write_video + "_timesptams.txt");
   }
+
 
   // Step 2 - Read Google flags (user defined configuration)
   // outputSize
@@ -98,9 +99,11 @@ std::string pnts2JSON(const cv::Mat & pnts, int frame, std::chrono::milliseconds
 {
 
   Json::Value points;
-  
-  for(int i; i < pnts.cols; i++)
-  {
+  Json::Value colors;
+
+
+  for(int i = 0; i < pnts.cols; i++)
+  { 
     cv::Vec3d point = pnts.at<cv::Vec3d>(0,i);
     Json::Value jpoint;
     jpoint["x"] = point[0];
@@ -109,13 +112,21 @@ std::string pnts2JSON(const cv::Mat & pnts, int frame, std::chrono::milliseconds
     points.append(jpoint);
   }
 
+  
+  colors["r"] = 0;
+  colors["g"] = 0;
+  colors["b"] = 0;
+  
+
   Json::Value root;
   root["type"] = "bodypoints";
   root["frame"] = frame;
+  root["id"] = "uniquestring";
+  root["radius"] = 1.0;
   root["pointorder"] = "openpose";
+  root["color"] = colors;
   root["points"] = points;
   root["timestamp"] = std::to_string(time.count());
-  //TODO: consistent timestamp also for ZED
 
   Json::StyledWriter writer;
   return writer.write(root);
@@ -148,6 +159,13 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
     verify(points3D, keep_on);
   }
 
+  if(FLAGS_write_video != "")
+  {
+    //TODO: write timestamp into file
+    timefile_ << cur_frame_ << " " << std::to_string(time.count()) << "\n";
+    std::cout << "writeing " << std::endl;
+  }
+
   return error;
 }
 
@@ -164,6 +182,7 @@ void PoseExtractor::init()
 void PoseExtractor::destroy()
 {
   outputfile_.close();
+  timefile_.close();
 }
 
 void PoseExtractor::setDepth(const cv::Mat & m)

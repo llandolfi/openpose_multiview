@@ -302,6 +302,7 @@ int main(int argc, char **argv) {
       cap >> image;
       auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
       double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on,time);
+
     }
 
   } 

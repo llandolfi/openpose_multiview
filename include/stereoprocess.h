@@ -62,7 +62,9 @@ struct PoseExtractor {
 	bool inited_;
 
 	cv::VideoWriter outputVideo_; 
-	std::ofstream outputfile_;   
+	std::ofstream outputfile_; 
+
+	std::ofstream timefile_;  
 
 	int cur_frame_;	
 
