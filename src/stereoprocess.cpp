@@ -45,10 +45,12 @@ DEFINE_bool(visualize,                  false,          "Visualize keypoints");
 
 DEFINE_bool(show_error,                 false,           "Show the reprojection error on terminal");
 
-DEFINE_int32(stream_udp,                  0,               "Stream body data points in JSON format to defined port");
+DEFINE_int32(udp_port,                  0,               "Stream body data points in JSON format to defined port");
+
+DEFINE_string(udp_address,              "127.0.0.1",      "Stream body data points in JSON format to defined port");
 
 
-PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution) : udpstreamer_(FLAGS_stream_udp)
+PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution) : udpstreamer_(FLAGS_udp_port, FLAGS_udp_address)
 {
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -143,7 +145,7 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
 
   error = triangulate(points3D);
 
-  if(FLAGS_stream_udp != 0)
+  if(FLAGS_udp_port != 0)
   {
     //TODO: generate JSON message, send with updstreamer
     udpstreamer_.sendMessage(pnts2JSON(points3D, cur_frame_, time));
@@ -163,7 +165,6 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
   {
     //TODO: write timestamp into file
     timefile_ << cur_frame_ << " " << std::to_string(time.count()) << "\n";
-    std::cout << "writeing " << std::endl;
   }
 
   return error;
@@ -404,33 +405,33 @@ void StereoPoseExtractor::visualize(bool * keep_on)
 void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 { 
 
-  if(pnts.empty())
-  {
-    return;
-  }
-  
-
-  std::vector<cv::Point2d> points2D(pnts.cols);
-
-  cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(cam_.ST_[0],0,0),cam_.intrinsics_right_,cam_.dist_right_,points2D);
-
-  int inside = 0;
-
-  for (unsigned int i = 0; i < pnts.cols; i++)
-  {
-
-    if(points2D[i].x < cam_.width_ && points2D[i].y < cam_.height_&& points2D[i].x > 0 && points2D[i].y > 0)
-    {
-      inside ++;
-    }
-  } 
   //TODO: write circles in projected points
   cv::Mat verification = imageright_.clone();
-  for (auto & c : points2D)
-  {
-    cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
-  }
 
+  if(!pnts.empty())
+  {
+    
+    std::vector<cv::Point2d> points2D(pnts.cols);
+
+    cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(cam_.ST_[0],0,0),cam_.intrinsics_right_,cam_.dist_right_,points2D);
+
+    int inside = 0;
+
+    for (unsigned int i = 0; i < pnts.cols; i++)
+    {
+
+      if(points2D[i].x < cam_.width_ && points2D[i].y < cam_.height_&& points2D[i].x > 0 && points2D[i].y > 0)
+      {
+        inside ++;
+      }
+    } 
+ 
+    for (auto & c : points2D)
+    {
+      cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
+    }
+
+  }
 
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
   cv::imshow("Verification", verification);

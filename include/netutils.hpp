@@ -11,10 +11,10 @@ using namespace boost::asio;
 struct UDPStreamer{
 
 
-	UDPStreamer(int port) : port_(port), socket_(udp_service_)
+	UDPStreamer(int port, const std::string & address) : port_(port), socket_(udp_service_)
 	{
 		socket_.open(ip::udp::v4());
-		remote_endpoint_ = ip::udp::endpoint(ip::address::from_string("127.0.0.1"), port_);
+		remote_endpoint_ = ip::udp::endpoint(ip::address::from_string(address.c_str()), port_);
 		std::cout << "remote endpoint " << remote_endpoint_ << std::endl;
 	}
 

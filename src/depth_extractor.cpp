@@ -219,22 +219,21 @@ void DepthExtractor::visualize(bool* keep_on)
 void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 { 
 
-  if(pnts.empty())
-  {
-    return;
-  }
-
-  std::vector<cv::Point2d> points2D(pnts.cols);
-
-  cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
-
   cv::Mat verification = RGB_.clone();
 
-  for (auto & c : points2D)
-  { 
-    cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
-  }
+  if(!pnts.empty())
+  {
 
+
+    std::vector<cv::Point2d> points2D(pnts.cols);
+
+    cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
+
+    for (auto & c : points2D)
+    { 
+      cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
+    }
+  }
 
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
   cv::imshow("Verification", verification);
