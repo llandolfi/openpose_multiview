@@ -61,7 +61,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   std::vector<cv::Point2d> points2D;
 
    
-  filterVisible(cam0pnts, cam0pnts);
+  //filterVisible(cam0pnts, cam0pnts);
 
   //Maybe smooth a little bit like in disparity?
   for( int i = 0; i < cam0pnts.cols; i++)
@@ -74,10 +74,16 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     double ddepth = depth_.at<uint16_t>(keypoint.x, keypoint.y);
 
-    if(ddepth > 0)
+    if(ddepth > 0 && point.x != 0.0 && point.y != 0.0)
     {
       point = point / 1000;
       points3D.push_back(point);
+      points2D.push_back(keypoint);
+    }
+    else
+    { 
+      double n = std::numeric_limits<double>::quiet_NaN();
+      points3D.push_back(cv::Point3d(n,n,n));
       points2D.push_back(keypoint);
     }
   }
@@ -221,9 +227,8 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
   cv::Mat verification = RGB_.clone();
 
-  if(!pnts.empty())
-  {
-
+ if(!pnts.empty())
+ {
 
     std::vector<cv::Point2d> points2D(pnts.cols);
 
@@ -233,12 +238,13 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
     { 
       cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
     }
+
   }
 
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
   cv::imshow("Verification", verification);
   
-  int k = cvWaitKey(2);
+  short k = cvWaitKey(2);
   if (k == 27)
   {
       *keep_on = false;

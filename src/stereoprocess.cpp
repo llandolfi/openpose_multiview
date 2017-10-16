@@ -73,7 +73,9 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   if(FLAGS_write_video != "")
   {
     timefile_.open(FLAGS_write_video + "_timesptams.txt");
+    jsonfile_.open(FLAGS_write_video + ".json");
   }
+
 
 
   // Step 2 - Read Google flags (user defined configuration)
@@ -108,14 +110,14 @@ std::string pnts2JSON(const cv::Mat & pnts, int frame, std::chrono::milliseconds
   { 
     cv::Vec3d point = pnts.at<cv::Vec3d>(0,i);
     Json::Value jpoint;
-    jpoint["x"] = point[0];
-    jpoint["y"] = point[1];
+    jpoint["x"] = -point[0];
+    jpoint["y"] = -point[1];
     jpoint["z"] = point[2];
     points.append(jpoint);
   }
 
   
-  colors["r"] = 0;
+  colors["r"] = 1.0;
   colors["g"] = 0;
   colors["b"] = 0;
   
@@ -124,13 +126,13 @@ std::string pnts2JSON(const cv::Mat & pnts, int frame, std::chrono::milliseconds
   root["type"] = "bodypoints";
   root["frame"] = frame;
   root["id"] = "uniquestring";
-  root["radius"] = 1.0;
+  root["radius"] = 0.08;
   root["pointorder"] = "openpose";
   root["color"] = colors;
   root["points"] = points;
   root["timestamp"] = std::to_string(time.count());
 
-  Json::StyledWriter writer;
+  Json::FastWriter writer;
   return writer.write(root);
 }
 
@@ -149,6 +151,11 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
   {
     //TODO: generate JSON message, send with updstreamer
     udpstreamer_.sendMessage(pnts2JSON(points3D, cur_frame_, time));
+  }
+  //TODO: add specific flag (output format)
+  else
+  {
+    jsonfile_ << pnts2JSON(points3D, cur_frame_, time);
   }
 
   if( FLAGS_show_error)
@@ -264,6 +271,7 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   cv::Mat cam1pnts_undist(1,N,CV_64FC2);
 
   //If zeros in at least one: remove both 
+  //TODO: instead -> put 0 0 in both
   filterVisible(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
 
   if(cam0pnts.cols == 0)
@@ -405,12 +413,13 @@ void StereoPoseExtractor::visualize(bool * keep_on)
 void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 { 
 
+
   //TODO: write circles in projected points
-  cv::Mat verification = imageright_.clone();
+  cv::Mat verification = imageright_.clone(); 
 
   if(!pnts.empty())
   {
-    
+
     std::vector<cv::Point2d> points2D(pnts.cols);
 
     cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(cam_.ST_[0],0,0),cam_.intrinsics_right_,cam_.dist_right_,points2D);
@@ -425,24 +434,26 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
         inside ++;
       }
     } 
- 
+
     for (auto & c : points2D)
     {
       cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
     }
-
   }
+
 
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
   cv::imshow("Verification", verification);
   
-  int k = cvWaitKey(2);
+  short k = cvWaitKey(3);
+
   if (k == 27)
-  {
+  {   
       *keep_on = false;
   }
   if (k == 's')
-  {
+  { 
+    std::cout << "SAVING " << std::endl;
     cv:imwrite("../data/3Dpoints.jpg", verification);
   }
 }

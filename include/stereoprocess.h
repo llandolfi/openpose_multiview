@@ -21,6 +21,7 @@
 #include "utilities.hpp"
 #include "stereo_cam.h"
 #include "netutils.hpp"
+#include <limits>
 #include <chrono>
 #include <opencv2/cudastereo.hpp>
 #include <gflags/gflags.h> // DEFINE_bool, DEFINE_int32, DEFINE_int64, DEFINE_uint64, DEFINE_double, DEFINE_string
@@ -65,6 +66,7 @@ struct PoseExtractor {
 	std::ofstream outputfile_; 
 
 	std::ofstream timefile_;  
+	std::ofstream jsonfile_;
 
 	int cur_frame_;	
 

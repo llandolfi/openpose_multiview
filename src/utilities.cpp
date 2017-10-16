@@ -1,5 +1,5 @@
 #include "utilities.hpp"
-
+#include <limits>
 
 int getHeight(const std::string & resolution)
 {
@@ -160,6 +160,11 @@ void filterVisible(const cv::Mat & pntsL, cv::Mat & nzL)
     {
       pntsl.push_back(pl);
     }
+    else
+    {
+      double n = std::numeric_limits<double>::quiet_NaN();
+      pntsl.push_back(cv::Vec2d(n,n));
+    }
 
   }
 
@@ -190,6 +195,11 @@ void filterVisible(const cv::Mat & pntsL, const cv::Mat & pntsR, cv::Mat & nzL, 
     {
       pntsl.push_back(pl);
       pntsr.push_back(pr);
+    }
+    else
+    {
+      pntsl.push_back(cv::Vec2d(0,0));
+      pntsr.push_back(cv::Vec2d(0,0));
     }
 
   }
