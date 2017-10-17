@@ -99,6 +99,11 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   pose_params_.opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
 }
 
+PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution, int fps) : PoseExtractor(argc,argv,resolution)
+{
+  pcam_-> fps_ = fps;
+} 
+
 std::string pnts2JSON(const cv::Mat & pnts, int frame, std::chrono::milliseconds & time)
 {
 
@@ -168,12 +173,6 @@ double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points
     verify(points3D, keep_on);
   }
 
-  if(FLAGS_write_video != "")
-  {
-    //TODO: write timestamp into file
-    timefile_ << cur_frame_ << " " << std::to_string(time.count()) << "\n";
-  }
-
   return error;
 }
 
@@ -203,19 +202,23 @@ StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::strin
                                             cam_(resolution)
 {  
 
+}
+
+StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::string resolution, int fps) : StereoPoseExtractor(argc,argv,resolution)
+{
   if (FLAGS_write_video != "")
   { 
     //TODO: parse resolution from instance fields
     cv::Size S = cv::Size(cam_.width_*2, cam_.height_);
-    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), 7, S, true);
+    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), fps, S, true);
     if (!outputVideo_.isOpened())
     {
         std::cout  << "Could not open the output video for write: " << std::endl;
         exit(-1);
     }
   }
-
-}
+  cam_.fps_ = fps;
+} 
 
 DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
 {
@@ -226,7 +229,7 @@ DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resoluti
   { 
 
     cv::Size S = cv::Size(640, 480);
-    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), 7, S, true);
+    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), 30, S, true);
     if (!outputVideo_.isOpened())
     {
         std::cout  << "Could not open the output video for write: " << std::endl;
@@ -234,7 +237,7 @@ DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resoluti
     }
   
     std::string depthpath = FLAGS_write_video + "depth.avi";
-    depthoutput_.open(depthpath, CV_FOURCC('M','J','P','G'), 7, S, true);
+    depthoutput_.open(depthpath, CV_FOURCC('M','J','P','G'), 30, S, true);
     if (!depthoutput_.isOpened())
     {
         std::cout  << "Could not open the depth output video for write: " << std::endl;
@@ -340,6 +343,13 @@ void PoseExtractor::process(const std::string & write_video, const std::string &
   PoseProcess(pose_params_, imageleft_, poseKeypointsL_, outputImageL_);
 }
 
+void StereoPoseExtractor::appendFrame()
+{
+  cv::Mat sidebyside_in;
+  cv::hconcat(imageleft_, imageright_, sidebyside_in);
+  outputVideo_ << sidebyside_in;
+}
+
 //TODO: save time by using OpenPose in a single image? 
 void StereoPoseExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
 {
@@ -347,14 +357,6 @@ void StereoPoseExtractor::process(const std::string & write_video, const std::st
   PoseExtractor::process(write_video, write_keypoint, viz);
   
   PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
-
-
-  if( write_video != "")
-  { 
-    cv::Mat sidebyside_in;
-    cv::hconcat(imageleft_, imageright_, sidebyside_in);
-    outputVideo_ << sidebyside_in;
-  }
 
   if( write_keypoint != "")
   {
@@ -402,7 +404,7 @@ void StereoPoseExtractor::visualize(bool * keep_on)
   cv::namedWindow("Side By Side", CV_WINDOW_AUTOSIZE);
   cv::imshow("Side By Side", sidebyside_out);
 
-  int k = cvWaitKey(2);
+  short k = cvWaitKey(2);
   if (k == 27)
   {
       *keep_on = false;

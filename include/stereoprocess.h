@@ -35,6 +35,8 @@ struct PoseExtractor {
 
 	PoseExtractor(int argc, char **argv, const std::string resolution);
 
+	PoseExtractor(int argc, char **argv, const std::string resolution, int fps);
+
 	virtual double go(const cv::Mat & image, const bool verify, cv::Mat &, bool* keep_on, std::chrono::milliseconds & time);
 
 	virtual double triangulate(cv::Mat &)=0;
@@ -42,6 +44,8 @@ struct PoseExtractor {
 	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize);
 
 	virtual void extract(const cv::Mat &)=0;
+
+	virtual void appendFrame()=0;
 
 	virtual void visualize(bool* keep_on)=0;
 
@@ -96,6 +100,8 @@ struct DepthExtractor : PoseExtractor {
 
 	double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D);
 
+	void appendFrame();
+
 	cv::Point3d getPointFromDepth(double u, double v, double z);
 
 	cv::Mat RGB_;
@@ -111,6 +117,8 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	StereoPoseExtractor(int argc, char **argv, const std::string resolution);
 
+	StereoPoseExtractor(int argc, char **argv, const std::string resolution, int fps);
+
 	void triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints);
 
 	void parseIntrinsicMatrix(const std::string path = "../settings/SN1499.conf");
@@ -124,6 +132,8 @@ struct StereoPoseExtractor : PoseExtractor {
 	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize);
 
 	virtual void extract(const cv::Mat &);
+
+	virtual void appendFrame();
 
 	virtual void verify(const cv::Mat & pnts, bool* keep_on);
 
@@ -141,6 +151,8 @@ struct StereoPoseExtractor : PoseExtractor {
 struct DisparityExtractor : StereoPoseExtractor {
 
 	DisparityExtractor(int argc, char **argv, const std::string resolution);
+
+	DisparityExtractor(int argc, char **argv, const std::string resolution, int fps);
 
 	void getDisparity();
 

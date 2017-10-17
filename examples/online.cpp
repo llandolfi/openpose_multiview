@@ -26,6 +26,8 @@
 #include "kinect1/freenect_grabber.hpp"
 #include "ipcpooledchannel.hpp"
 #include <chrono>
+#include "channel_wrapper.hpp"
+#include <thread>
 
 /*g++ ./src/stereocam.cpp  -lopenpose -DUSE_CAFFE -lopencv_core -lopencv_highgui -I /usr/local/cuda-8.0/include/ -L /usr/local/cuda-8.0/lib64  -lcudart -lcublas -lcurand -L /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/lib/  -I /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/include/ -lcaffe -DUSE_CUDNN  -std=c++11 -pthread -fPIC -fopenmp -O3 -lcudnn -lglog -lgflags -lboost_system -lboost_filesystem -lm -lboost_thread -luvc  -o prova.a
 */
@@ -50,7 +52,28 @@ DEFINE_string(camera,                   "ZED",           "The camera used for st
 PoseExtractor * stereoextractor;
 bool keep_on = true;
 
+ChannelWrapper<cv::Mat> pc_camera(keep_on, 3);
+
 std::map<std::string, int> camera_map = {{"ZED",0},{"K1",1}};
+
+  
+void process(PoseExtractor * pe, std::shared_ptr<PooledChannel<cv::Mat>> pcw)
+{
+  cv::Mat pnts;
+  cv::Mat RGB;
+  //TODO: take RGB and time from pooledchannel
+
+  while(keep_on)
+  {
+    if(!pcw->read(RGB))
+    {
+      continue;
+    }
+    //TODO: assign time
+    pe->go(RGB,FLAGS_verify,pnts,&keep_on,time)
+  }
+}
+
 
 /* This callback function runs once per frame. Use it to perform any
  * quick processing you need, or have it put the frame into your application's
@@ -84,15 +107,13 @@ void cb(uvc_frame_t *frame, void *ptr) {
      
   cvSetData(cvImg, bgr->data, bgr->width * 3); 
 
-  cv::Mat pnts;
   cv::Mat image = cv::cvarrToMat(cvImg);
   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
+  //TODO: write to outputvideo and put the frame in a queue. Then the stereoExtactor can process it 
+  pc.write(image);
 
-  double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on,time);
-  //std::cout << "error " << error << std::endl;
-   
-  cvReleaseImageHeader(&cvImg);
+  //cvReleaseImageHeader(&cvImg);
    
   uvc_free_frame(bgr);
 }
@@ -237,6 +258,8 @@ int main(int argc, char **argv) {
   // Parsing command line flags
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  std::vector<std::thread> thread_list;
+
   switch(camera_map[FLAGS_camera])
   {
     case 0: 
@@ -245,12 +268,12 @@ int main(int argc, char **argv) {
             if(FLAGS_disparity == true)
             {
               std::cout << "Using disparity " << std::endl;
-              stereoextractor = new DisparityExtractor(argc, argv, FLAGS_resolution);
+              stereoextractor = new DisparityExtractor(argc, argv, FLAGS_resolution, FLAGS_fps);
             }
             else
             {
               std::cout << "Using triangulation " << std::endl;
-              stereoextractor = new StereoPoseExtractor(argc, argv, FLAGS_resolution);
+              stereoextractor = new StereoPoseExtractor(argc, argv, FLAGS_resolution, FLAGS_fps);
             }
             break;
     case 1: 
@@ -268,14 +291,16 @@ int main(int argc, char **argv) {
     switch(camera_map[FLAGS_camera])
     {
       case 0: 
-
-              startZedStream();
+              thread_list.push_back(std::thread(starZedStream));
               break;
 
       case 1: 
-              startK1Stream();
+              thread_list.push_back(std::thread(startK1Stream));
               break;
     }
+
+    thread_list.push_back(std::thread(process, stereoextractor, pc_camera.getNewChannel()));
+
   }
 
   else

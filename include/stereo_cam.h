@@ -29,6 +29,7 @@ struct PinholeCamera{
 	PinholeCamera(const std::string params_path);
 
 	int width_,height_;
+	int fps_;
 
 	cv::Mat intrinsics_;
 	cv::Mat dist_;
@@ -64,6 +65,7 @@ struct StereoCamera {
 	std::string path_ = "../settings/SN1499.conf";
 
 	int width_,height_;
+	int fps_;
 
 	cv::Mat intrinsics_left_;
 	cv::Mat intrinsics_right_;

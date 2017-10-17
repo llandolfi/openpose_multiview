@@ -154,21 +154,22 @@ void decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
   }
 }
 
+void DepthExtractor::appendFrame()
+{
+
+ outputVideo_ << RGB_;
+ 
+ //convert depth in normal codec: from single channel 16 bit 
+ cv::Mat depthtosave;
+ encodeDepth(depth_, depthtosave);
+
+ depthoutput_ << depthtosave;  
+}
+
 void DepthExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
 { 
 
   PoseProcess(pose_params_, RGB_, poseKeypointsL_, outputImageL_);
-
-  if( write_video != "")
-  { 
-    outputVideo_ << RGB_;
-
-    //convert depth in normal codec: from single channel 16 bit 
-    cv::Mat depthtosave;
-    encodeDepth(depth_, depthtosave);
-
-    depthoutput_ << depthtosave; 
-  }
 
   if( write_keypoint != "")
   {
@@ -215,7 +216,7 @@ void DepthExtractor::visualize(bool* keep_on)
   cv::namedWindow("Keypoints", CV_WINDOW_AUTOSIZE);
   cv::imshow("Keypoints", outputImageL_);
 
-  int k = cvWaitKey(2);
+  short k = cvWaitKey(2);
   if (k == 27)
   {
       *keep_on = false;

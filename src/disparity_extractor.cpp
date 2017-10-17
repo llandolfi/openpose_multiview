@@ -25,6 +25,11 @@ DisparityExtractor::DisparityExtractor(int argc, char **argv, const std::string 
 
 }
 
+DisparityExtractor::DisparityExtractor(int argc, char **argv, const std::string resolution, int fps) : StereoPoseExtractor(argc, argv, resolution, fps)
+{
+
+}
+
 void DisparityExtractor::getDisparity()
 { 
   cv::Mat grayleft,grayright;
