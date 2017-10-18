@@ -92,6 +92,8 @@ namespace detailpool
 template <class T, class CT = std::vector<T> >
 class PooledChannel
 {
+	public:	
+
 	CT data_; /// array of data
 	std::list<T*> free_list_; /// list of free buffers
 	std::list<T*> ready_list_; /// list of ready buffers
@@ -102,8 +104,6 @@ class PooledChannel
 	mutable std::condition_variable write_ready_var,read_ready_var;
 	const bool dummyterminate_ = false; 
 	const bool *terminate_ = &dummyterminate_;
-
-public:	
 
 	/// creates the pool with n buffers, and the flag for the policy of discard in case of read
 	PooledChannel(int n, bool adiscardold, bool aalwayslast): discard_old_(adiscardold),alwayslast_(aalwayslast),

@@ -144,6 +144,8 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
 
   error = triangulate(points3D);
 
+  std::cout << "Nose: " << points3D.at<cv::Vec3d>(0,0) << std::endl;
+
   if(FLAGS_udp_port != 0)
   {
     //TODO: generate JSON message, send with updstreamer

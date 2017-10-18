@@ -33,7 +33,7 @@ template <typename T>
 std::shared_ptr<PooledChannel<std::shared_ptr<T>>> ChannelWrapper<T>::getNewChannel(){
 
 	mutex_.lock();
-	pc_.push_back(std::make_shared<PooledChannel<std::shared_ptr<T>>>(size_, true, false));
+	pc_.push_back(std::make_shared<PooledChannel<std::shared_ptr<T>>>(size_, false, true));
 	pc_.back()->setTermination(&stopper_);
 	mutex_.unlock();
 	return pc_.back();

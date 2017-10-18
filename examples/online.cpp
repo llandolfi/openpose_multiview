@@ -57,7 +57,7 @@ bool keep_on = true;
 bool to_stop = false;
 
 
-ChannelWrapper<ImageFrame> pc_camera(to_stop, 3);
+ChannelWrapper<ImageFrame> pc_camera(to_stop, 2);
 
 std::map<std::string, int> camera_map = {{"ZED",0},{"K1",1}};
 
@@ -101,11 +101,17 @@ void terminator()
 {
   while(keep_on)
   {
-    sleep(1);
+    sleep(0.5);
   }
 
   std::cout << "Setting stopper! " << std::endl;
   to_stop = true;
+  
+  for (auto ch : pc_camera.getChannels())
+  {
+    ch->write_ready_var.notify_all();
+  }
+
 }
 
 
@@ -335,13 +341,17 @@ int main(int argc, char **argv) {
       thread_list.push_back(std::thread(saveVideo, stereoextractor, pc_camera.getNewChannel()));
     }
 
+    //std::thread * producer;
+
     switch(camera_map[FLAGS_camera])
     {
       case 0: 
+              //producer = new std::thread(startZedStream);
               startZedStream();
               break;
 
       case 1: 
+              //producer = new std::thread(startK1Stream);
               startK1Stream();
               break;
       default:
@@ -383,6 +393,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < thread_list.size(); i++)
   {
     thread_list[i].join();
+    std::cout << "Joyned " << std::endl;
   }
 
   stereoextractor->destroy();
