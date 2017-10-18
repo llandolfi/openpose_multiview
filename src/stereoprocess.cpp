@@ -37,7 +37,6 @@ DEFINE_double(render_threshold,         0.05,           "Only estimated keypoint
                                                         " more false positives (i.e. wrong detections).");
 DEFINE_double(alpha_pose,               0.6,            "Blending factor (range 0-1) for the body part rendering. 1 will show it completely, 0 will"
                                                         " hide it. Only valid for GPU rendering.");
-DEFINE_string(write_video,              "",             "Full file path to write rendered frames in motion JPEG video format.");
 
 DEFINE_string(write_keypoint,           "",             "Full file path to write people body pose keypoints data. Only CSV format supported");  
 
@@ -70,13 +69,6 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
     outputfile_ << "\n";
   }
 
-  if(FLAGS_write_video != "")
-  {
-    timefile_.open(FLAGS_write_video + "_timesptams.txt");
-    jsonfile_.open(FLAGS_write_video + ".json");
-  }
-
-
 
   // Step 2 - Read Google flags (user defined configuration)
   // outputSize
@@ -104,7 +96,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   pcam_-> fps_ = fps;
 } 
 
-std::string pnts2JSON(const cv::Mat & pnts, int frame, std::chrono::milliseconds & time)
+std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
 {
 
   Json::Value points;
@@ -135,32 +127,32 @@ std::string pnts2JSON(const cv::Mat & pnts, int frame, std::chrono::milliseconds
   root["pointorder"] = "openpose";
   root["color"] = colors;
   root["points"] = points;
-  root["timestamp"] = std::to_string(time.count());
+  root["timestamp"] = time;
 
   Json::FastWriter writer;
   return writer.write(root);
 }
 
-double PoseExtractor::go(const cv::Mat & image, const bool ver, cv::Mat & points3D, bool* keep_on, std::chrono::milliseconds & time)
+double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & points3D, bool* keep_on)
 { 
 
   double error = 0.0;  
 
   extract(image);
 
-  process(FLAGS_write_video, FLAGS_write_keypoint, FLAGS_visualize);
+  process(FLAGS_write_keypoint, FLAGS_visualize);
 
   error = triangulate(points3D);
 
   if(FLAGS_udp_port != 0)
   {
     //TODO: generate JSON message, send with updstreamer
-    udpstreamer_.sendMessage(pnts2JSON(points3D, cur_frame_, time));
+    udpstreamer_.sendMessage(pnts2JSON(points3D, cur_frame_, std::to_string(image.time_stamp_.count())));
   }
   //TODO: add specific flag (output format)
   else
   {
-    jsonfile_ << pnts2JSON(points3D, cur_frame_, time);
+    jsonfile_ << pnts2JSON(points3D, cur_frame_, std::to_string(image.time_stamp_.count()));
   }
 
   if( FLAGS_show_error)
@@ -206,44 +198,24 @@ StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::strin
 
 StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::string resolution, int fps) : StereoPoseExtractor(argc,argv,resolution)
 {
-  if (FLAGS_write_video != "")
-  { 
-    //TODO: parse resolution from instance fields
-    cv::Size S = cv::Size(cam_.width_*2, cam_.height_);
-    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), fps, S, true);
-    if (!outputVideo_.isOpened())
-    {
-        std::cout  << "Could not open the output video for write: " << std::endl;
-        exit(-1);
-    }
-  }
+
   cam_.fps_ = fps;
 } 
 
-DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
+
+void StereoPoseExtractor::prepareVideo(const std::string & path)
 {
-
-  pcam_ = new DepthCamera();
-
-  if (FLAGS_write_video != "")
-  { 
-
-    cv::Size S = cv::Size(640, 480);
-    outputVideo_.open(FLAGS_write_video, CV_FOURCC('M','J','P','G'), 30, S, true);
-    if (!outputVideo_.isOpened())
-    {
-        std::cout  << "Could not open the output video for write: " << std::endl;
-        exit(-1);
-    }
-  
-    std::string depthpath = FLAGS_write_video + "depth.avi";
-    depthoutput_.open(depthpath, CV_FOURCC('M','J','P','G'), 30, S, true);
-    if (!depthoutput_.isOpened())
-    {
-        std::cout  << "Could not open the depth output video for write: " << std::endl;
-        exit(-1);
-    }
+  //TODO: parse resolution from instance fields
+  cv::Size S = cv::Size(cam_.width_*2, cam_.height_);
+  outputVideo_.open(path, CV_FOURCC('M','J','P','G'), cam_.fps_, S, true);
+  if (!outputVideo_.isOpened())
+  {
+      std::cout  << "Could not open the output video for write: " << std::endl;
+      exit(-1);
   }
+
+  timefile_.open(path + "_timesptams.txt");
+  jsonfile_.open(path + ".json"); 
 }
 
 void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints)
@@ -330,31 +302,31 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
 }
 
 
-void StereoPoseExtractor::extract(const cv::Mat & image)
+void StereoPoseExtractor::extract(const ImageFrame & image)
 {
 
   cur_frame_ ++;
-  splitVertically(image, imageleft_, imageright_);
+  splitVertically(image.color_, imageleft_, imageright_);
 
 }
 
-void PoseExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
+void PoseExtractor::process(const std::string & write_keypoint, bool viz)
 {
   PoseProcess(pose_params_, imageleft_, poseKeypointsL_, outputImageL_);
 }
 
-void StereoPoseExtractor::appendFrame()
-{
-  cv::Mat sidebyside_in;
-  cv::hconcat(imageleft_, imageright_, sidebyside_in);
-  outputVideo_ << sidebyside_in;
+
+void StereoPoseExtractor::appendFrame(const ImageFrame & myframe)
+{ 
+  outputVideo_ << myframe.color_;
+  timefile_ << std::to_string(myframe.time_stamp_.count()) << "\n";
 }
 
 //TODO: save time by using OpenPose in a single image? 
-void StereoPoseExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
-{
+void StereoPoseExtractor::process(const std::string & write_keypoint, bool viz)
+{ 
 
-  PoseExtractor::process(write_video, write_keypoint, viz);
+  PoseExtractor::process(write_keypoint, viz);
   
   PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
 
@@ -415,9 +387,7 @@ void StereoPoseExtractor::visualize(bool * keep_on)
 void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 { 
 
-
-  //TODO: write circles in projected points
-  cv::Mat verification = imageright_.clone(); 
+  cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
 
   if(!pnts.empty())
   {
@@ -439,15 +409,14 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
     for (auto & c : points2D)
     {
-      cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
+      cv::circle(imageright_,c,4,cv::Scalar(0,0,255),2);
     }
   }
 
-
-  cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
-  cv::imshow("Verification", verification);
+  cv::imshow("Verification", imageright_);
   
-  short k = cvWaitKey(3);
+
+  short k = cvWaitKey(2);
 
   if (k == 27)
   {   
@@ -456,7 +425,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   if (k == 's')
   { 
     std::cout << "SAVING " << std::endl;
-    cv:imwrite("../data/3Dpoints.jpg", verification);
+    cv::imwrite("../data/3Dpoints.jpg", imageright_);
   }
 }
 

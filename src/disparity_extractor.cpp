@@ -178,11 +178,11 @@ static void saveXYZ(const char* filename, const cv::Mat& mat)
 
 
 
-void DisparityExtractor::extract(const cv::Mat & image)
+void DisparityExtractor::extract(const ImageFrame & image)
 {
 
   cur_frame_ ++;
-  splitVertically(image, imageleft_, imageright_);
+  splitVertically(image.color_, imageleft_, imageright_);
 
   cv::Mat left_undist, right_undist;
 

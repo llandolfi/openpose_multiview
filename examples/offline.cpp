@@ -63,9 +63,9 @@ int main(int argc, char **argv) {
   {
 
     cv::Mat pnts3D;
-    cap >> image;
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
-    double error = stereoextractor->go(image,FLAGS_verify,pnts3D,&keep_on,time);
+    ImageFrame image;
+    cap >> image.color_;
+    double error = stereoextractor->go(image,FLAGS_verify,pnts3D,&keep_on);
 
   }
 

@@ -28,6 +28,7 @@
 #include <chrono>
 #include "channel_wrapper.hpp"
 #include <thread>
+#include "image_frame.hpp"
 
 /*g++ ./src/stereocam.cpp  -lopenpose -DUSE_CAFFE -lopencv_core -lopencv_highgui -I /usr/local/cuda-8.0/include/ -L /usr/local/cuda-8.0/lib64  -lcudart -lcublas -lcurand -L /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/lib/  -I /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/include/ -lcaffe -DUSE_CUDNN  -std=c++11 -pthread -fPIC -fopenmp -O3 -lcudnn -lglog -lgflags -lboost_system -lboost_filesystem -lm -lboost_thread -luvc  -o prova.a
 */
@@ -48,30 +49,63 @@ DEFINE_string(resolution,               "1280x720",     "The image resolution (d
 
 DEFINE_string(camera,                   "ZED",           "The camera used for streaming (ZED,K1)");  
 
+DEFINE_string(write_video,              "",             "Full file path to write rendered frames in motion JPEG video format.");
+
 
 PoseExtractor * stereoextractor;
 bool keep_on = true;
+bool to_stop = false;
 
-ChannelWrapper<cv::Mat> pc_camera(keep_on, 3);
+
+ChannelWrapper<ImageFrame> pc_camera(to_stop, 3);
 
 std::map<std::string, int> camera_map = {{"ZED",0},{"K1",1}};
 
   
-void process(PoseExtractor * pe, std::shared_ptr<PooledChannel<cv::Mat>> pcw)
-{
+void process(PoseExtractor * pe, std::shared_ptr<PooledChannel<std::shared_ptr<ImageFrame>>> pcw)
+{ 
+
   cv::Mat pnts;
-  cv::Mat RGB;
-  //TODO: take RGB and time from pooledchannel
+  std::shared_ptr<ImageFrame> myframe;
+
+  //PoseExtractor must be inited on the same thread it calls process
+  pe->init();
+  std::cout << "Inited " << std::endl;
+
+  while(keep_on)
+  { 
+    if(pcw->readNoWait(myframe))
+    {
+    pe->go(*myframe,FLAGS_verify,pnts,&keep_on);
+    }
+  }
+}
+
+void saveVideo(PoseExtractor * pe, std::shared_ptr<PooledChannel<std::shared_ptr<ImageFrame>>> pcw)
+{
+
+  std::shared_ptr<ImageFrame> myframe;
+
+  pe->prepareVideo(FLAGS_write_video);
 
   while(keep_on)
   {
-    if(!pcw->read(RGB))
+    if(pcw->readNoWait(myframe))
     {
-      continue;
+      pe->appendFrame(*myframe);
     }
-    //TODO: assign time
-    pe->go(RGB,FLAGS_verify,pnts,&keep_on,time)
   }
+}
+
+void terminator()
+{
+  while(keep_on)
+  {
+    sleep(1);
+  }
+
+  std::cout << "Setting stopper! " << std::endl;
+  to_stop = true;
 }
 
 
@@ -79,6 +113,7 @@ void process(PoseExtractor * pe, std::shared_ptr<PooledChannel<cv::Mat>> pcw)
  * quick processing you need, or have it put the frame into your application's
  * input queue. If this function takes too long, you'll start losing frames. */
 void cb(uvc_frame_t *frame, void *ptr) {
+
   uvc_frame_t *bgr;
   uvc_error_t ret;
 
@@ -98,7 +133,6 @@ void cb(uvc_frame_t *frame, void *ptr) {
   }
 
   // Step 4 - Initialize resources on desired thread (in this case single thread, i.e. we init resources here)
-  stereoextractor->init();
 
   IplImage* cvImg = cvCreateImageHeader(
         cvSize(bgr->width, bgr->height),
@@ -106,20 +140,26 @@ void cb(uvc_frame_t *frame, void *ptr) {
        3);
      
   cvSetData(cvImg, bgr->data, bgr->width * 3); 
+  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()); 
+
+  std::shared_ptr<ImageFrame> imageframe = std::make_shared<ImageFrame>();
 
   cv::Mat image = cv::cvarrToMat(cvImg);
-  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+
+  imageframe->color_ = image;
+  imageframe->time_stamp_ = time;
 
   //TODO: write to outputvideo and put the frame in a queue. Then the stereoExtactor can process it 
-  pc.write(image);
+  pc_camera.write(imageframe);
 
-  //cvReleaseImageHeader(&cvImg);
+  cvReleaseImageHeader(&cvImg);
    
   uvc_free_frame(bgr);
 }
 
 int startZedStream()
-{
+{ 
+ 
   uvc_context_t *ctx;
   uvc_device_t *dev;
   uvc_device_handle_t *devh;
@@ -178,7 +218,6 @@ int startZedStream()
          *   cb(frame, (void*) 12345)
          */
         res = uvc_start_streaming(devh, &ctrl, cb, (void*)123450, 0);
-
         if (res < 0) {
           uvc_perror(res, "start_streaming"); /* unable to start stream */
         } else {
@@ -224,8 +263,6 @@ void startK1Stream()
 
   IPCPooledChannel<Payload> pc("kinect1",ReaderTag(),ReadOrderPolicy::Ordered);
 
-  stereoextractor->init();
-
   while (keep_on)
   {
    
@@ -241,13 +278,15 @@ void startK1Stream()
     depth.data = static_cast<uchar*>(data->depth);
     std::chrono::milliseconds time = data->time_;
 
-    cv::Mat pnts;
-
-    stereoextractor->setDepth(depth);
-    double error = stereoextractor->go(RGB,FLAGS_verify,pnts,&keep_on,time);
-
-
     pc.readerDone(data);
+
+    //TODO: publish on the  interthread channel
+    std::shared_ptr<ImageFrame> myframe = std::make_shared<ImageFrame>();
+    myframe->color_ = RGB;
+    myframe->depth_ = depth;
+    myframe->time_stamp_ = time;
+
+    pc_camera.write(myframe);
   
   }
   //DO not remove shared memory, server is in charge
@@ -288,19 +327,27 @@ int main(int argc, char **argv) {
   if( FLAGS_video == "" )
   {
 
+    thread_list.push_back(std::thread(process, stereoextractor, pc_camera.getNewChannel()));
+    thread_list.push_back(std::thread(terminator));
+
+    if(FLAGS_write_video != "")
+    {
+      thread_list.push_back(std::thread(saveVideo, stereoextractor, pc_camera.getNewChannel()));
+    }
+
     switch(camera_map[FLAGS_camera])
     {
       case 0: 
-              thread_list.push_back(std::thread(starZedStream));
+              startZedStream();
               break;
 
       case 1: 
-              thread_list.push_back(std::thread(startK1Stream));
+              startK1Stream();
               break;
+      default:
+              std::cout << "NO DEFAULT CASE" << std::endl;
+              exit(-1); 
     }
-
-    thread_list.push_back(std::thread(process, stereoextractor, pc_camera.getNewChannel()));
-
   }
 
   else
@@ -323,14 +370,20 @@ int main(int argc, char **argv) {
     while(keep_on)
     {
 
-      cv::Mat image,pnts;
-      cap >> image;
-      auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
-      double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on,time);
+      cv::Mat pnts;
+      ImageFrame image;
+      cap >> image.color_;
+      double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on);
 
     }
 
   } 
+
+
+  for (int i = 0; i < thread_list.size(); i++)
+  {
+    thread_list[i].join();
+  }
 
   stereoextractor->destroy();
 

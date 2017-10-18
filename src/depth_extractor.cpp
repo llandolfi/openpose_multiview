@@ -6,6 +6,13 @@
 
 bool inited = false;
 
+
+DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
+{
+
+  pcam_ = new DepthCamera();
+}
+
 /*
 * x: point coordinate in pixel
 * y: point coordinate in pixel
@@ -154,19 +161,40 @@ void decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
   }
 }
 
-void DepthExtractor::appendFrame()
+void DepthExtractor::appendFrame(const ImageFrame & myframe)
 {
 
- outputVideo_ << RGB_;
+ outputVideo_ << myframe.color_;
  
  //convert depth in normal codec: from single channel 16 bit 
  cv::Mat depthtosave;
- encodeDepth(depth_, depthtosave);
-
+ encodeDepth(myframe.depth_, depthtosave);
  depthoutput_ << depthtosave;  
+
+ timefile_ << std::to_string(myframe.time_stamp_.count()) << "\n";
 }
 
-void DepthExtractor::process(const std::string & write_video, const std::string & write_keypoint, bool viz)
+void DepthExtractor::prepareVideo(const std::string & path)
+{
+
+  cv::Size S = cv::Size(640, 480);
+  outputVideo_.open(path, CV_FOURCC('M','J','P','G'), 30, S, true);
+  if (!outputVideo_.isOpened())
+  {
+      std::cout  << "Could not open the output video for write: " << std::endl;
+      exit(-1);
+  }
+
+  std::string depthpath = path + "depth.avi";
+  depthoutput_.open(depthpath, CV_FOURCC('M','J','P','G'), 30, S, true);
+  if (!depthoutput_.isOpened())
+  {
+      std::cout  << "Could not open the depth output video for write: " << std::endl;
+      exit(-1);
+  }
+}
+
+void DepthExtractor::process(const std::string & write_keypoint, bool viz)
 { 
 
   PoseProcess(pose_params_, RGB_, poseKeypointsL_, outputImageL_);
@@ -182,13 +210,19 @@ void DepthExtractor::process(const std::string & write_video, const std::string 
   }
 }
 
-void DepthExtractor::extract(const cv::Mat & m)
+void DepthExtractor::extract(const ImageFrame & m)
 { 
 
   cur_frame_ ++;
-  RGB_ = m;
+  RGB_ = m.color_;
 
-  if(!live_)
+  if(live_)
+  {
+
+  depth_ = m.depth_;
+  }
+
+  else
   {
 
     if(!inited)

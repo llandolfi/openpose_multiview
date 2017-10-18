@@ -188,7 +188,7 @@ public:
 
 	/// simple read
 	bool read(T & x)
-	{
+	{	
 		T * p = 0;
 		readerGet(p);
 		if(!p){

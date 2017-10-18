@@ -38,7 +38,7 @@ struct ImageFrame {
   CamParams depth_params_;
   long seq_number_;
 
-  std::chrono::high_resolution_clock::time_point time_stamp_;
+  std::chrono::milliseconds time_stamp_;
 };
 
 

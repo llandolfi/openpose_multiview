@@ -24,6 +24,7 @@
 #include <limits>
 #include <chrono>
 #include <opencv2/cudastereo.hpp>
+#include "image_frame.hpp"
 #include <gflags/gflags.h> // DEFINE_bool, DEFINE_int32, DEFINE_int64, DEFINE_uint64, DEFINE_double, DEFINE_string
 #include <glog/logging.h> // google::InitGoogleLogging
 
@@ -37,19 +38,21 @@ struct PoseExtractor {
 
 	PoseExtractor(int argc, char **argv, const std::string resolution, int fps);
 
-	virtual double go(const cv::Mat & image, const bool verify, cv::Mat &, bool* keep_on, std::chrono::milliseconds & time);
+	virtual double go(const ImageFrame & image, const bool verify, cv::Mat &, bool* keep_on);
 
 	virtual double triangulate(cv::Mat &)=0;
 
-	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize);
+	virtual void process(const std::string & write_keypoint, bool visualize);
 
-	virtual void extract(const cv::Mat &)=0;
+	virtual void extract(const ImageFrame &)=0;
 
-	virtual void appendFrame()=0;
+	virtual void appendFrame(const ImageFrame &)=0;
 
 	virtual void visualize(bool* keep_on)=0;
 
 	virtual void verify(const cv::Mat & pnts, bool* keep_on)=0;
+
+	virtual void prepareVideo(const std::string & path)=0;
 
 	virtual void setDepth(const cv::Mat & m);
 
@@ -90,17 +93,19 @@ struct DepthExtractor : PoseExtractor {
 
 	virtual double triangulate(cv::Mat &);
 
-	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize);
+	virtual void process(const std::string & write_keypoint, bool visualize);
 
-	virtual void extract(const cv::Mat &);
+	virtual void extract(const ImageFrame &);
 
 	virtual void visualize(bool* keep_on);
 
 	virtual void verify(const cv::Mat & pnts, bool* keep_on);
 
+	virtual void prepareVideo(const std::string & path);
+
 	double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D);
 
-	void appendFrame();
+	void appendFrame(const ImageFrame &);
 
 	cv::Point3d getPointFromDepth(double u, double v, double z);
 
@@ -129,13 +134,15 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	virtual void visualize(bool* keep_on);
 
-	virtual void process(const std::string & write_video, const std::string & write_keypoint, bool visualize);
+	virtual void process(const std::string & write_keypoint, bool visualize);
 
-	virtual void extract(const cv::Mat &);
+	virtual void extract(const ImageFrame &);
 
-	virtual void appendFrame();
+	virtual void appendFrame(const ImageFrame &);
 
 	virtual void verify(const cv::Mat & pnts, bool* keep_on);
+
+	virtual void prepareVideo(const std::string & path);
 
 	virtual double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D, bool left = true);
 
@@ -164,7 +171,7 @@ struct DisparityExtractor : StereoPoseExtractor {
 
 	void verifyD(const cv::Mat & pnts, bool* keep_on);
 
-	virtual void extract(const cv::Mat & image);
+	virtual void extract(const ImageFrame & image);
 
 	virtual double triangulate(cv::Mat & output); 
 
@@ -193,12 +200,12 @@ struct DisparityExtractor : StereoPoseExtractor {
 struct PoseExtractorFromFile : StereoPoseExtractor {
 
 	PoseExtractorFromFile(int argc, char **argv, const std::string resolution, const std::string path);
-                                        
-	virtual void process(const cv::Mat & image);
-
+                                      
 	virtual void visualize(bool * keep_on);
 
 	virtual void getPoints(cv::Mat & outputL, cv::Mat & outputR);
+
+	void process(const cv::Mat & image);
 
 	void getNextBlock(std::vector<std::vector<std::string>> & lines);
 
