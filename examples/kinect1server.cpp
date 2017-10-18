@@ -47,31 +47,28 @@ int main( int argc, char** argv )
       if(!RGB.empty())
       {
 
-  
-        if(count % 2 == 0)
-        {
 
-          Payload * data = new Payload(640,480);
 
-          data = pc.writerGet();
+        Payload * data = new Payload(640,480);
 
-          data->width_ = w;
-          data->height_ = h;
-               
-          cur_frame ++;
+        data = pc.writerGet();
 
-          memcpy(data->RGB, RGB.data, (w*h*3)*sizeof(uint8_t));
-          memcpy(data->depth, depth.data, (w*h)*sizeof(uint16_t));
-          data->frame_ = cur_frame;
+        data->width_ = w;
+        data->height_ = h;
+             
+        cur_frame ++;
 
-          data->time_ = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+        memcpy(data->RGB, RGB.data, (w*h*3)*sizeof(uint8_t));
+        memcpy(data->depth, depth.data, (w*h)*sizeof(uint16_t));
+        data->frame_ = cur_frame;
 
-          pc.writerDone(data);
+        data->time_ = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
+        pc.writerDone(data);
+
+      
       }
-    }
 
-    count ++;
     }
 
     pc.remove();

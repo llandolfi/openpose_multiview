@@ -192,6 +192,9 @@ void DepthExtractor::prepareVideo(const std::string & path)
       std::cout  << "Could not open the depth output video for write: " << std::endl;
       exit(-1);
   }
+
+  timefile_.open(path + "_timestamps.txt");
+  jsonfile_.open(path + ".json"); 
 }
 
 void DepthExtractor::process(const std::string & write_keypoint, bool viz)

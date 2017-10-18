@@ -214,7 +214,7 @@ void StereoPoseExtractor::prepareVideo(const std::string & path)
       exit(-1);
   }
 
-  timefile_.open(path + "_timesptams.txt");
+  timefile_.open(path + "_timestamps.txt");
   jsonfile_.open(path + ".json"); 
 }
 
