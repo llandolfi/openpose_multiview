@@ -58,7 +58,6 @@ double DepthExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D)
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
 
-
   double epsilon = 100;
   //I can take all the points negleting if they belong to a specific person 
   //how can I know if the points belong to the same person? 
@@ -82,10 +81,10 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
     cv::Point2d keypoint = cam0pnts.at<cv::Point2d>(0,i);
 
     cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
-                        (double)depth_.at<uint16_t>(cvRound(keypoint.x), cvRound(keypoint.y)));
+                        (double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
                         //Pool(depth_, keypoint.x, keypoint.y, 1,MinPool));
 
-    double ddepth = depth_.at<uint16_t>(keypoint.x, keypoint.y);
+    uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
 
     if(ddepth > 0 && point.x != 0.0 && point.y != 0.0)
     {

@@ -130,12 +130,18 @@ std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
   root["timestamp"] = time;
 
   Json::FastWriter writer;
+  Json::StyledWriter writerp;
+
+  std::cout << "sending: " << std::endl;
+  std::cout << writerp.write(root) << std::endl;
+
   return writer.write(root);
 }
 
 double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & points3D, bool* keep_on)
 { 
 
+  points3D = cv::Mat();
   double error = 0.0;  
 
   extract(image);
@@ -143,8 +149,6 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   process(FLAGS_write_keypoint, FLAGS_visualize);
 
   error = triangulate(points3D);
-
-  std::cout << "Nose: " << points3D.at<cv::Vec3d>(0,0) << std::endl;
 
   if(FLAGS_udp_port != 0)
   {
@@ -238,7 +242,7 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
     std::cout << "number of detectd people differs" << std::endl;
     std::cout << cam0pnts.cols << " " << cam1pnts.cols << std::endl;
     //TODO: routine to take only the bounding boxes of the same people 
-    equalize(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
+    equalize(cam0pnts, cam1pnts, cam0pnts, cam1pnts); 
   }
 
   N = nz_cam1pnts.cols;
@@ -416,9 +420,12 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
       }
     } 
 
-    for (auto & c : points2D)
+    for (int i = 0; i < pnts.cols; i++)
     {
-      cv::circle(verification,c,6,cv::Scalar(255,0,0),5);
+      if(pnts.at<cv::Vec3d>(0,i)[2] < 99999)
+      {
+        cv::circle(verification,points2D[i],6,cv::Scalar(255,0,0),5);
+      }
     }
   }
 

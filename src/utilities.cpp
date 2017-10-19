@@ -198,8 +198,10 @@ void filterVisible(const cv::Mat & pntsL, const cv::Mat & pntsR, cv::Mat & nzL, 
     }
     else
     {
-      pntsl.push_back(cv::Vec2d(0,0));
-      pntsr.push_back(cv::Vec2d(0,0));
+      //Push Nan instead of zero
+      double n = std::numeric_limits<double>::quiet_NaN();
+      pntsl.push_back(cv::Vec2d(n,n));
+      pntsr.push_back(cv::Vec2d(n,n));
     }
 
   }
