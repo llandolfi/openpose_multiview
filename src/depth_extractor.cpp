@@ -58,11 +58,17 @@ double DepthExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D)
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
 
+
   double epsilon = 100;
   //I can take all the points negleting if they belong to a specific person 
   //how can I know if the points belong to the same person? 
   cv::Mat cam0pnts;
   opArray2Mat(poseKeypointsL_, cam0pnts);
+
+  if(cam0pnts.empty())
+  {
+    return 0.0;
+  }
 
   std::vector<cv::Point3d> points3D;
   std::vector<cv::Point2d> points2D;
@@ -263,10 +269,10 @@ void DepthExtractor::visualize(bool* keep_on)
 void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 { 
 
-  cv::Mat verification = RGB_.clone();
+  cv::Mat verification = outputImageL_.clone();
 
- if(!pnts.empty())
- {
+  if(!pnts.empty())
+  {
 
     std::vector<cv::Point2d> points2D(pnts.cols);
 
@@ -274,7 +280,7 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
     for (auto & c : points2D)
     { 
-      cv::circle(verification,c,4,cv::Scalar(0,0,255),2);
+      cv::circle(verification,c,5,cv::Scalar(255,0,0),5);
     }
 
   }

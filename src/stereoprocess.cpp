@@ -363,6 +363,11 @@ double StereoPoseExtractor::triangulate(cv::Mat & finalpoints)
 
   getPoints(cam0pnts,cam1pnts);
 
+  if(cam0pnts.empty() || cam1pnts.empty())
+  {
+    return 0.0;
+  }
+
   triangulateCore(cam0pnts, cam1pnts, finalpoints);
 
   return getRMS(cam0pnts,finalpoints);
@@ -391,6 +396,8 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
 
+  cv::Mat verification = outputImageR_.clone();
+
   if(!pnts.empty())
   {
 
@@ -411,11 +418,11 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
     for (auto & c : points2D)
     {
-      cv::circle(imageright_,c,4,cv::Scalar(0,0,255),2);
+      cv::circle(verification,c,6,cv::Scalar(255,0,0),5);
     }
   }
 
-  cv::imshow("Verification", imageright_);
+  cv::imshow("Verification", verification);
   
 
   short k = cvWaitKey(2);
@@ -427,7 +434,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   if (k == 's')
   { 
     std::cout << "SAVING " << std::endl;
-    cv::imwrite("../data/3Dpoints.jpg", imageright_);
+    cv::imwrite("../data/3Dpoints.jpg", verification);
   }
 }
 

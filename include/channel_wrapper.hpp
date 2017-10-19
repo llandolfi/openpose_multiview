@@ -10,7 +10,7 @@ class ChannelWrapper{
 public:
 
 	ChannelWrapper(bool & stopper, int size): stopper_(stopper), size_(size) {}
-	std::shared_ptr<PooledChannel<std::shared_ptr<T>>> getNewChannel();
+	std::shared_ptr<PooledChannel<std::shared_ptr<T>>> getNewChannel(bool a,bool b);
 	std::vector<std::shared_ptr<PooledChannel<std::shared_ptr<T>>>> & getChannels();
 	void write(std::shared_ptr<T> t);
 	void shutDown();
@@ -30,10 +30,10 @@ std::vector<std::shared_ptr<PooledChannel<std::shared_ptr<T>>>> & ChannelWrapper
 }
 
 template <typename T>
-std::shared_ptr<PooledChannel<std::shared_ptr<T>>> ChannelWrapper<T>::getNewChannel(){
+std::shared_ptr<PooledChannel<std::shared_ptr<T>>> ChannelWrapper<T>::getNewChannel(bool discardold, bool alwayslast){
 
 	mutex_.lock();
-	pc_.push_back(std::make_shared<PooledChannel<std::shared_ptr<T>>>(size_, true, false));
+	pc_.push_back(std::make_shared<PooledChannel<std::shared_ptr<T>>>(size_, discardold, alwayslast));
 	pc_.back()->setTermination(&stopper_);
 	mutex_.unlock();
 	return pc_.back();

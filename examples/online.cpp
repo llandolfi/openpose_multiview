@@ -57,7 +57,7 @@ bool keep_on = true;
 bool to_stop = false;
 
 
-ChannelWrapper<ImageFrame> pc_camera(to_stop, 2);
+ChannelWrapper<ImageFrame> pc_camera(to_stop, 3);
 
 std::map<std::string, int> camera_map = {{"ZED",0},{"K1",1}};
 
@@ -74,7 +74,7 @@ void process(PoseExtractor * pe, std::shared_ptr<PooledChannel<std::shared_ptr<I
 
   while(keep_on)
   { 
-    if(pcw->readNoWait(myframe))
+    if(pcw->read(myframe))
     {
     pe->go(*myframe,FLAGS_verify,pnts,&keep_on);
     }
@@ -90,7 +90,7 @@ void saveVideo(PoseExtractor * pe, std::shared_ptr<PooledChannel<std::shared_ptr
 
   while(keep_on)
   {
-    if(pcw->readNoWait(myframe))
+    if(pcw->read(myframe))
     {
       pe->appendFrame(*myframe);
     }
@@ -333,12 +333,12 @@ int main(int argc, char **argv) {
   if( FLAGS_video == "" )
   {
 
-    thread_list.push_back(std::thread(process, stereoextractor, pc_camera.getNewChannel()));
+    thread_list.push_back(std::thread(process, stereoextractor, pc_camera.getNewChannel(true, false)));
     thread_list.push_back(std::thread(terminator));
 
     if(FLAGS_write_video != "")
     {
-      thread_list.push_back(std::thread(saveVideo, stereoextractor, pc_camera.getNewChannel()));
+      thread_list.push_back(std::thread(saveVideo, stereoextractor, pc_camera.getNewChannel(true, false)));
     }
 
     //std::thread * producer;
