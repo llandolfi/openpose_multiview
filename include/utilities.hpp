@@ -83,4 +83,8 @@ double AvgPool(const cv::Mat &);
 double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(const cv::Mat &)> function);
 
 void PoseProcess(const OpenPoseParams & params, const cv::Mat & image, op::Array<float> & poseKeypoints, cv::Mat & outputImage);
+/*
+* Find Correspondent bodies from camera left and right
+*/
+void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & out1, cv::Mat out2);
 

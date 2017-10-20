@@ -237,11 +237,12 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
     return;
   }
 
+
   if(cam0pnts.cols != cam1pnts.cols)
   {
     std::cout << "number of detectd people differs" << std::endl;
     std::cout << cam0pnts.cols << " " << cam1pnts.cols << std::endl;
-    //TODO: routine to take only the bounding boxes of the same people 
+    //TODO: routine to take only the bounding boxes of the same people even if the number of people is the same in both cameras 
     equalize(cam0pnts, cam1pnts, cam0pnts, cam1pnts); 
   }
 
