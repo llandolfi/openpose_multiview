@@ -1,5 +1,6 @@
 #include "utilities.hpp"
 #include <limits>
+#include <map>
 
 /*
  *  Returns height from resolution string, which is in the form widthxheight
@@ -95,20 +96,22 @@ void opArray2Mat(const op::Array<float> & keypoints, cv::Mat & campnts)
 
   double x = 0.0;
   double y = 0.0;
+  double conf = 0.0;
 
   //Ugliest AND SLOWEST
   std::vector<std::string> spoints = CSVTokenize(keypoints.toString());
 
   int people = keypoints.getVolume()/54;
 
-  campnts = cv::Mat(1,people*18,CV_64FC2);
+  campnts = cv::Mat(1,people*18,CV_64FC3);
 
   for (int i = 0; i < 54 * people; i += 3)
   {
     x = atof(spoints[i].c_str());
     y = atof(spoints[i+1].c_str());
-    cv::Vec2d elem(x,y);
-    campnts.at<cv::Vec2d>(0,i/3) = elem;
+    conf = atof(spoints[i+2].c_str());
+    cv::Vec3d elem(x,y,conf);
+    campnts.at<cv::Vec3d>(0,i/3) = elem;
   }
 }
 
@@ -240,6 +243,42 @@ void filterVisible(const cv::Mat & pntsL, const cv::Mat & pntsR, cv::Mat & nzL, 
   }
 }
 
+void filterVisible(std::vector<cv::Mat> & bodies_left, std::vector<cv::Mat> & bodies_right, double conf)
+{  
+  cv::Vec3d pl;
+  cv::Vec3d pr;
+  cv::Vec2d zerov(0.0,0.0);
+  double n = std::numeric_limits<double>::quiet_NaN();
+
+  for(int i = 0; i < bodies_left.size(); i++)
+  {
+    for (int j = 0; j < 18; j++)
+    {
+
+      cv::Vec3d pl = bodies_left[i].at<cv::Vec3d>(0,j);
+      cv::Vec3d pr = bodies_right[i].at<cv::Vec3d>(0,j);
+
+      cv::Vec2d ppl = cv::Vec2d(pl[0], pl[1]);
+      cv::Vec2d ppr = cv::Vec2d(pr[0], pr[1]);
+
+      if(ppl == zerov || ppr == zerov)
+      {
+        //Push Nan instead of zero
+        bodies_left[i].at<cv::Vec3d>(0,j) = cv::Vec3d(n,n,n);
+        bodies_right[i].at<cv::Vec3d>(0,j) = cv::Vec3d(n,n,n);
+      }
+
+      //check also confidence
+      if(pl[2] < conf || pr[2] < conf)
+      {
+        bodies_left[i].at<cv::Vec3d>(0,j) = cv::Vec3d(n,n,n);
+        bodies_right[i].at<cv::Vec3d>(0,j) = cv::Vec3d(n,n,n);
+      }
+
+    }
+  }
+}
+
 /*
 * Transforms the type of a cv::Mat into a string
 */
@@ -306,14 +345,28 @@ void pts2VecofBodies(const cv::Mat & pts1, std::vector<cv::Mat> & bodies_left)
 {
   for(int i=0; i < pts1.cols/18; i++)
   {
-    cv::Mat pleft(1,18,CV_64FC2);
+    cv::Mat pleft(1,18,CV_64FC3);
 
     for (int j=0; j<18; j++)
     {
-      pleft.at<cv::Vec2d>(0,j) = pts1.at<cv::Vec2d>(0,(18*i)+j);
+      pleft.at<cv::Vec3d>(0,j) = pts1.at<cv::Vec3d>(0,(18*i)+j);
     }
 
     bodies_left.push_back(pleft);
+  }
+}
+
+void vecofBodies2Pts(const std::vector<cv::Mat> bodies, cv::Mat & pts)
+{
+  pts = cv::Mat(1,18*bodies.size(),CV_64FC2);
+
+  for(int i = 0; i < bodies.size(); i++)
+  {
+    for(int j = 0; j < 18; j++)
+    { 
+      cv::Vec3d pt = bodies[i].at<cv::Vec3d>(0,j);
+      pts.at<cv::Vec2d>(0, j + (18*i)) = cv::Vec2d(pt[0],pt[1]);
+    }
   }
 }
 
@@ -430,7 +483,7 @@ void associate(const std::vector<cv::Mat> & bodies_left, const std::vector<cv::M
   for(int i = 0; i < bodies_left.size(); i++)
   {
 
-    int minind = 0;
+    int minind = -1;
     double mindiff = 9999999;
 
     for(int j = 0; j < bodies_right.size(); j++)
@@ -448,9 +501,9 @@ void associate(const std::vector<cv::Mat> & bodies_left, const std::vector<cv::M
 }
 
 /*
-* Find Correspondent bodies from camera left and right
+* Find Correspondent bodies from camera left and right. Note that pts1 and pts2 contain also the confidence level
 */
-void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & out1, cv::Mat out2)
+void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & sorted_left, cv::Mat & sorted_right)
 {
 
   //TODO: divide the points in bodies -> every 18 points one body, get the center of each body
@@ -466,10 +519,33 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & o
   associate(bodies_left, bodies_right, minindsL);
   associate(bodies_right, bodies_right, minindsR);
 
-  //TODO: find conflicts
+
+  //TODO: find conflicts: minindsL[i] contains the index of the body associated with i with respet to i
+  std::map<int,int> corresp;
+  for (int i = 0; i < minindsL.size(); i++)
+  {
+    minindsR[minindsL[i]] == i;
+    corresp.insert(std::pair<int,int>(minindsL[i], i));
+  }
+
+  std::vector<cv::Mat> proper_left;
+  std::vector<cv::Mat> proper_right;
+
+  for(std::map<int,int>::iterator it = corresp.begin(); it != corresp.end(); ++it)
+  {
+    //std::cout << "associating left " << it->first << " with right " << it->second << std::endl;
+    //std::cout << "left size: " << bodies_left.size() << " right size: " << bodies_right.size() << std::endl;
+    proper_left.push_back(bodies_right[it->first]);
+    proper_right.push_back(bodies_left[it->second]);
+  }
+
+  //If zeros in at least one: put NaN, NaN in both so that triangulation is meaningless 
+  filterVisible(proper_left, proper_right);
+
+  vecofBodies2Pts(proper_left, sorted_left);
+  vecofBodies2Pts(proper_right, sorted_right);
 
 }
-
 /*
 * In case the detection on the two cameras outputs a different amount of bodies, this function associates the 
 * bodies found on camera left to the ones found on camera right

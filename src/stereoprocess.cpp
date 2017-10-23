@@ -132,8 +132,8 @@ std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
   Json::FastWriter writer;
   Json::StyledWriter writerp;
 
-  std::cout << "sending: " << std::endl;
-  std::cout << writerp.write(root) << std::endl;
+  //std::cout << "sending: " << std::endl;
+  //std::cout << writerp.write(root) << std::endl;
 
   return writer.write(root);
 }
@@ -169,6 +169,7 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   if(ver)
   { 
     verify(points3D, keep_on);
+    std::cout << "verifyied " << std::endl;
   }
 
   return error;
@@ -224,41 +225,26 @@ void StereoPoseExtractor::prepareVideo(const std::string & path)
   jsonfile_.open(path + ".json"); 
 }
 
+//N.B. cam0pnts holds also confidence
 void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints)
-{
+{ 
   int N = 0;
-  cv::Mat nz_cam0pnts;
-  cv::Mat nz_cam1pnts;
-  //TODO: check the numeber of detected people is the same, otherwise PROBLEM
+  cv::Mat cam0pnts_undist;
+  cv::Mat cam1pnts_undist;
 
   if (cam0pnts.cols == 0 || cam1pnts.cols == 0)
   {
-    std::cout << "One Image did not get points " << std::endl;
+    std::cout << "One Image did not get points. No correspondences can be found!" << std::endl;
     return;
   }
 
+  std::map<int,int> correspondences;
+  findCorrespondences(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
 
-  if(cam0pnts.cols != cam1pnts.cols)
+  //TODO: check not emptyness
+  if(cam0pnts.empty() || cam1pnts.empty())
   {
-    std::cout << "number of detectd people differs" << std::endl;
-    std::cout << cam0pnts.cols << " " << cam1pnts.cols << std::endl;
-    //TODO: routine to take only the bounding boxes of the same people even if the number of people is the same in both cameras 
-    equalize(cam0pnts, cam1pnts, cam0pnts, cam1pnts); 
-  }
-
-  N = nz_cam1pnts.cols;
-
-  //Undistort points
-  cv::Mat cam0pnts_undist(1,N,CV_64FC2);
-  cv::Mat cam1pnts_undist(1,N,CV_64FC2);
-
-  //If zeros in at least one: remove both 
-  //TODO: instead -> put 0 0 in both
-  filterVisible(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
-
-  if(cam0pnts.cols == 0)
-  {
-    std::cout <<  "NO MATCHING POINTS FOUND!" << std::endl; 
+    std::cout << "No correspondences " << std::endl;
     return;
   }
 
@@ -402,6 +388,19 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
 
   cv::Mat verification = outputImageR_.clone();
+  cv::Mat properpnts = cv::Mat(1, pnts.cols, CV_64FC2);
+
+  std::vector<cv::Mat> channels(3);
+  std::vector<cv::Mat> properchannels(2);
+  cv::split(pnts,channels);
+
+  for (int i = 0; i < 2; i++)
+  {
+    properchannels[i] = channels[i];
+  }
+
+  cv::merge(properchannels, properpnts);
+
 
   if(!pnts.empty())
   {

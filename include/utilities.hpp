@@ -58,6 +58,8 @@ void filterVisible(const cv::Mat & pntsL, cv::Mat & nzL);
 
 void filterVisible(const cv::Mat & pntsL, const cv::Mat & pntsR, cv::Mat & nzL, cv::Mat & nzR);
 
+void filterVisible(std::vector<cv::Mat> & bodies_left, std::vector<cv::Mat> & bodies_right, double conf = 0.4);
+
 std::string type2str(int type);
 
 void drawPoints(const cv::Mat & points, cv::Mat & image);
@@ -71,6 +73,8 @@ int closestCentroidC(const cv::Vec2d & c, const std::vector<cv::Vec2d> & v);
 cv::Vec2d getMedian(const cv::Mat & body);
 
 void pts2VecofBodies(const cv::Mat & pts1, std::vector<cv::Mat> & bodies_left);
+
+void vecofBodies2Pts(const std::vector<cv::Mat> bodies, cv::Mat & pts);
 
 void splitVertically(const cv::Mat & input, cv::Mat & outputleft, cv::Mat & outputright);
 
@@ -86,5 +90,5 @@ void PoseProcess(const OpenPoseParams & params, const cv::Mat & image, op::Array
 /*
 * Find Correspondent bodies from camera left and right
 */
-void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & out1, cv::Mat out2);
+void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & sorted_left, cv::Mat & sorted_right);
 
