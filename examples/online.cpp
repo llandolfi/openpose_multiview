@@ -377,14 +377,18 @@ int main(int argc, char **argv) {
 
     stereoextractor->init();
 
+    cv::Mat pnts;
+    ImageFrame image;
+    uint64_t myframe = 0;
+
     while(keep_on)
     {
-
-      cv::Mat pnts;
-      ImageFrame image;
       cap >> image.color_;
-      double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on);
-
+      if(myframe % 8 == 0)
+      {
+        double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on);
+      }
+      myframe ++;
     }
 
   } 

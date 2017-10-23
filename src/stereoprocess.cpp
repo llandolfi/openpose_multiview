@@ -169,7 +169,6 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   if(ver)
   { 
     verify(points3D, keep_on);
-    std::cout << "verifyied " << std::endl;
   }
 
   return error;
@@ -214,7 +213,7 @@ void StereoPoseExtractor::prepareVideo(const std::string & path)
 {
   //TODO: parse resolution from instance fields
   cv::Size S = cv::Size(cam_.width_*2, cam_.height_);
-  outputVideo_.open(path, CV_FOURCC('M','J','P','G'), cam_.fps_, S, true);
+  outputVideo_.open(path, CV_FOURCC('P','I','M','1'), cam_.fps_, S, true);
   if (!outputVideo_.isOpened())
   {
       std::cout  << "Could not open the output video for write: " << std::endl;
@@ -366,10 +365,43 @@ double StereoPoseExtractor::triangulate(cv::Mat & finalpoints)
 }
 
 void StereoPoseExtractor::visualize(bool * keep_on)
-{
+{ 
+
+  cv::Mat cam0pnts, cam1pnts;
+  getPoints(cam0pnts,cam1pnts);
+
+  std::cout << "columns " << cam0pnts.cols << std::endl;
+
+  //TODO: draw circles of different colors depending on body index 
+  for(int i = 0; i < cam0pnts.cols/18; i = i + 18)
+  { 
+    std::cout << "i: " << i << std::endl;
+    for (int j = 0; j < 18; j++)
+    {
+    cv::Point3d pc = cam0pnts.at<cv::Point3d>(0,j + (i*18));
+    cv::Point2d p(pc.x, pc.y);
+    cv::Scalar color = cv::Scalar(255,255,0);
+    cv::circle(outputImageL_,p,6,color,5);
+    }
+  }
+
+  for(int i = 0; i < cam1pnts.cols/18; i = i + 18)
+  {
+    for (int j = 0; j < 18; j++)
+    {
+    cv::Point3d pc = cam1pnts.at<cv::Point3d>(0,j + (i*18));
+    cv::Point2d p(pc.x, pc.y);
+    cv::Scalar color = cv::Scalar(i*55,0,0);
+    cv::circle(outputImageR_,p,6,color,5);
+    }
+  }
+
+
+
   //TODO: make a video with 2 frame side by side
   cv::Mat sidebyside_out;
   cv::hconcat(outputImageL_, outputImageR_, sidebyside_out);
+
 
   cv::namedWindow("Side By Side", CV_WINDOW_AUTOSIZE);
   cv::imshow("Side By Side", sidebyside_out);
@@ -388,19 +420,6 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
 
   cv::Mat verification = outputImageR_.clone();
-  cv::Mat properpnts = cv::Mat(1, pnts.cols, CV_64FC2);
-
-  std::vector<cv::Mat> channels(3);
-  std::vector<cv::Mat> properchannels(2);
-  cv::split(pnts,channels);
-
-  for (int i = 0; i < 2; i++)
-  {
-    properchannels[i] = channels[i];
-  }
-
-  cv::merge(properchannels, properpnts);
-
 
   if(!pnts.empty())
   {
@@ -432,7 +451,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   cv::imshow("Verification", verification);
   
 
-  short k = cvWaitKey(2);
+  short k = cvWaitKey(0);
 
   if (k == 27)
   {   

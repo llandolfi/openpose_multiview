@@ -373,81 +373,18 @@ void vecofBodies2Pts(const std::vector<cv::Mat> bodies, cv::Mat & pts)
 void body2VecofPoints(const cv::Mat & body, std::vector<cv::Point2d> & v)
 {
 
+  std::vector<cv::Point3d> v3d;
   for( int i = 0; i < body.cols; i++)
   {
-    v.push_back(body.at<cv::Point2d>(0,i));
+    v3d.push_back(body.at<cv::Point3d>(0,i));
   }
 
-}
-
-/*
-* Takes 2D the centroid of a body detected by OpenPose. 
-*/
-cv::Vec2d getMedian(const cv::Mat & body)
-{
-
-  double x,y = 0.0;
-  double count = 0.0;
-
-  for(int i = 0; i < body.cols; i++)
+  for (auto p : v3d)
   {
-    cv::Vec2d v = body.at<cv::Vec2d>(0,i);
-    x = x + v[0];
-    y = y + v[1];
-
-    if (v[0] != 0.0 || v[1] != 0.0)
-    {
-      count++;
-    }
-
-  } 
-
-  x = x / count;
-  y = y / count;
-
-  return cv::Vec2d(x,y);
-}
-
-/*
-* Returns the index of the closest body centroid to centroid c
-*/
-int closestCentroidC(const cv::Vec2d & c, const std::vector<cv::Vec2d> & v)
-{
-
-  int minind = 0;
-  double mindist = 999999999.9;
-  int ind = -1;
-
-  for (auto & a : v)
-  {
-    ind ++;
-    double dist = std::sqrt(std::pow(c[0] - a[0], 2) + std::pow(c[1] - a[1], 2));
-
-    if(dist < mindist)
-    {
-      mindist = dist;
-      minind = ind;
-    }
+    v.push_back(cv::Point2d(p.x,p.y));
   }
-
-  return minind;
 }
 
-/*
-* Returns the index of the closest body 
-*/
-int closestCentroidM(const cv::Vec2d & c, const std::vector<cv::Mat> & v)
-{
-
-  std::vector<cv::Vec2d> vc;
-
-  for (auto & a : v)
-  {
-    vc.push_back(getMedian(a));
-  }
-
-  return closestCentroidC(c,vc);
-}
 
 double computeDiff(const cv::Mat & ml, const cv::Mat & mr, int cn = 4)
 {
@@ -519,13 +456,29 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
   associate(bodies_left, bodies_right, minindsL);
   associate(bodies_right, bodies_right, minindsR);
 
+  std::cout << "Min inds L " << std::endl;
+  for (auto e : minindsL)
+  {
+    std::cout << e << " ";
+  }
+  std::cout << "\n";
+
+  std::cout << "Min inds R " << std::endl;
+  for (auto e : minindsR)
+  {
+    std::cout << e << " ";
+  }
+  std::cout << "\n";
+
 
   //TODO: find conflicts: minindsL[i] contains the index of the body associated with i with respet to i
   std::map<int,int> corresp;
   for (int i = 0; i < minindsL.size(); i++)
   {
-    minindsR[minindsL[i]] == i;
-    corresp.insert(std::pair<int,int>(minindsL[i], i));
+    if( minindsR[minindsL[i]] == i)
+    {
+      corresp.insert(std::pair<int,int>(minindsL[i], i));
+    }
   }
 
   std::vector<cv::Mat> proper_left;
@@ -533,10 +486,10 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
 
   for(std::map<int,int>::iterator it = corresp.begin(); it != corresp.end(); ++it)
   {
-    //std::cout << "associating left " << it->first << " with right " << it->second << std::endl;
+    std::cout << "associating left " << it->first << " with right " << it->second << std::endl;
     //std::cout << "left size: " << bodies_left.size() << " right size: " << bodies_right.size() << std::endl;
-    proper_left.push_back(bodies_right[it->first]);
-    proper_right.push_back(bodies_left[it->second]);
+    proper_right.push_back(bodies_right[it->first]);
+    proper_left.push_back(bodies_left[it->second]);
   }
 
   //If zeros in at least one: put NaN, NaN in both so that triangulation is meaningless 
@@ -546,95 +499,7 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
   vecofBodies2Pts(proper_right, sorted_right);
 
 }
-/*
-* In case the detection on the two cameras outputs a different amount of bodies, this function associates the 
-* bodies found on camera left to the ones found on camera right
-*/ 
-void equalize(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & outl, cv::Mat & outr)
-{
 
-  //TODO: divide the points in bodies -> every 18 points one body, get the center of each body
-  std::vector<cv::Mat> bodies_left;
-  std::vector<cv::Mat> bodies_right;
-
-  std::vector<cv::Vec2d> centroids_left;
-  std::vector<cv::Vec2d> centroids_right;
-
-  std::vector<int> mininds;
-
-  bool minatleft = true;
-
-  pts2VecofBodies(pts1, bodies_left);
-  pts2VecofBodies(pts2, bodies_right);
-
-  for (auto & b : bodies_left)
-  {
-    centroids_left.push_back(getMedian(b));
-  }
-
-  for (auto & b : bodies_right)
-  {
-    centroids_right.push_back(getMedian(b));
-  }
-
-  std::vector<cv::Mat> * minbodies;
-  std::vector<cv::Mat> * maxbodies;
-
-  if(bodies_left.size() < bodies_right.size())
-  {
-    minbodies = &(bodies_left);
-    maxbodies = &(bodies_right);
-  }
-  else
-  {
-    minatleft = false;
-    minbodies = &(bodies_right);
-    maxbodies = &(bodies_left);
-  }
-
-  for(auto & c : *minbodies)
-  {
-    //TODO:find the index of the closest element to c in maxbodies 
-    std::vector<cv::Mat> topass = *maxbodies;
-    std::vector<cv::Vec2d> vc;
-    cv::Vec2d d = getMedian(c);
-
-    for (auto & a : topass)
-    {
-      vc.push_back(getMedian(a));
-    }
-
-    int curmin = closestCentroidC(d,vc);
-    mininds.push_back(curmin);
-  }
-
-  int outsize = minbodies->size();
-
-  cv::Mat out1 = cv::Mat(1,outsize*18, CV_64FC2);
-  cv::Mat out2 = cv::Mat(1,outsize*18, CV_64FC2);
-
-  for (int i = 0; i < outsize; i++)
-  {
-
-    for(int j = 0; j < 18; j++)
-    {
-      out1.at<cv::Vec2d>(0,(18*i)+j) = minbodies->at(i).at<cv::Vec2d>(0,j);
-      out2.at<cv::Vec2d>(0,(18*i)+j) = maxbodies->at(mininds[i]).at<cv::Vec2d>(0,j);
-    }
-
-  }
-
-  if(minatleft)
-  {
-    outl = out1;
-    outr = out2;
-  }
-  else
-  {
-    outl = out2;
-    outr = out1;
-  }
-}
 
 double MaxPool(const cv::Mat & matrix)
 { 
