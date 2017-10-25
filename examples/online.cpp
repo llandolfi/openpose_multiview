@@ -23,7 +23,7 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include "shared_memory_log.hpp"
-#include "kinect1/freenect_grabber.hpp"
+#include "freenect_grabber.hpp"
 #include "ipcpooledchannel.hpp"
 #include <chrono>
 #include "channel_wrapper.hpp"

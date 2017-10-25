@@ -544,29 +544,28 @@ double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(c
   return function(matrix);
 }
 
-void PoseProcess(const OpenPoseParams & params, const cv::Mat & image, op::Array<float> & poseKeypoints, cv::Mat & outputImage)
+void PoseProcess(const OpenPoseParams & params, const cv::Mat & inputImage, op::Array<float> & poseKeypoints, cv::Mat & outputImage)
 {
-                 
-  op::Array<float> netInputArrayL;
+                
 
-  op::Array<float> outputArrayL;
+  const op::Point<int> imageSize{inputImage.cols, inputImage.rows};
+   // Step 2 - Get desired scale sizes
+   std::vector<double> scaleInputToNetInputs;
+   std::vector<op::Point<int>> netInputSizes;
+   double scaleInputToOutput;
+   op::Point<int> outputResolution;
+   std::tie(scaleInputToNetInputs, netInputSizes, scaleInputToOutput, outputResolution)
+       = params.scaleAndSizeExtractor_->extract(imageSize);
+   // Step 3 - Format input image to OpenPose input and output formats
+   const auto netInputArray = params.cvMatToOpInput_.createArray(inputImage, scaleInputToNetInputs, netInputSizes);
+   auto outputArray = params.cvMatToOpOutput_.createArray(inputImage, scaleInputToOutput, outputResolution);
+   // Step 4 - Estimate poseKeypoints
+   params.poseExtractorCaffe_->forwardPass(netInputArray, imageSize, scaleInputToNetInputs);
+   poseKeypoints = params.poseExtractorCaffe_->getPoseKeypoints();
+   // Step 5 - Render poseKeypoints
+   params.poseRenderer_->renderPose(outputArray, poseKeypoints);
+   // Step 6 - OpenPose output format to cv::Mat
+   outputImage = params.opOutputToCvMatL_.formatToCvMat(outputArray);
 
-  std::vector<float> scaleRatiosL;
-
-  double scaleInputToOutputL;
-
-  std::tie(netInputArrayL, scaleRatiosL) = params.cvMatToOpInput_->format(image);
-  std::tie(scaleInputToOutputL, outputArrayL) = params.cvMatToOpOutput_->format(image);
-
-  // Step 3 - Estimate poseKeypoints
-  params.poseExtractorCaffeL_->forwardPass(netInputArrayL, {image.cols, image.rows}, scaleRatiosL);
-
-  poseKeypoints = params.poseExtractorCaffeL_->getPoseKeypoints();
-
-  // Step 4 - Render poseKeypoints
-  params.poseRendererL_->renderPose(outputArrayL, poseKeypoints);
-  
-  // Step 5 - OpenPose output format to cv::Mat
-  outputImage = params.opOutputToCvMatL_->formatToCvMat(outputArrayL);
 }
 

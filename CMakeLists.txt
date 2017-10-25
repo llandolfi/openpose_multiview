@@ -4,10 +4,11 @@ project( StereoPose )
 
 add_definitions(--std=c++11)
 
-SET( CAFFE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../openpose/3rdparty/caffe)
+SET( CAFFE_DIR /home/giacomo/libraries/openpose/build/caffe)
 
 find_package(OpenMP)
-if (OPENMP_FOUND)
+if (OPENMP_FOUND) 
+
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
     add_definitions(-DHAVE_OMP)
@@ -107,7 +108,7 @@ if (CUDA_FOUND)
         ${libuvc_LIBRARIES} 
         ${OpenCV_LIBS}
         ${Boost_LIBRARIES}
-        ${CAFFE_DIR}/build/lib/libcaffe.so
+        ${CAFFE_DIR}/lib/libcaffe.so
         glog
         gflags
         openpose

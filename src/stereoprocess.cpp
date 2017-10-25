@@ -69,7 +69,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
     outputfile_ << "\n";
   }
 
-
+  const bool enableGoogleLogging = true;
   // Step 2 - Read Google flags (user defined configuration)
   // outputSize
   const auto outputSize = op::flagsToPoint(resolution, "1280x720");
@@ -80,15 +80,14 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   // poseModel
   const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
 
-  // Step 3 - Initialize all required classes
-  pose_params_.cvMatToOpInput_ = new op::CvMatToOpInput{netInputSize, FLAGS_scale_number, (float)FLAGS_scale_gap};
-  pose_params_.cvMatToOpOutput_ = new op::CvMatToOpOutput{outputSize};
-  pose_params_.poseExtractorCaffeL_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
-                                                FLAGS_model_folder, FLAGS_num_gpu_start};
-  pose_params_.poseRendererL_ = new op::PoseRenderer{netOutputSize, outputSize, poseModel, nullptr, (float)FLAGS_render_threshold,
-                                    !FLAGS_disable_blending, (float)FLAGS_alpha_pose};
-  pose_params_.opOutputToCvMatL_ = new op::OpOutputToCvMat{outputSize};
-  pose_params_.opOutputToCvMatR_ = new op::OpOutputToCvMat{outputSize};
+  pose_params_.scaleAndSizeExtractor_ = new op::ScaleAndSizeExtractor (netInputSize, outputSize, FLAGS_scale_number, FLAGS_scale_gap);
+
+  pose_params_.poseExtractorCaffe_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
+                                               FLAGS_model_folder, FLAGS_num_gpu_start, {}, op::ScaleMode::ZeroToOne,
+                                               enableGoogleLogging};
+  pose_params_.poseRenderer_ = new op::PoseCpuRenderer {poseModel, (float)FLAGS_render_threshold, !FLAGS_disable_blending,
+                                      (float)FLAGS_alpha_pose};
+  pose_params_.frameDisplayer_ = new op::FrameDisplayer{"OpenPose multiview", outputSize};
 }
 
 PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution, int fps) : PoseExtractor(argc,argv,resolution)
@@ -178,8 +177,8 @@ void PoseExtractor::init()
 {
   if (inited_ == false)
   {
-    pose_params_.poseExtractorCaffeL_->initializationOnThread();
-    pose_params_.poseRendererL_->initializationOnThread();
+    pose_params_.poseExtractorCaffe_->initializationOnThread();
+    pose_params_.poseRenderer_->initializationOnThread();
     inited_ = true;
   }
 }
