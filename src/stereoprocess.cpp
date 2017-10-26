@@ -370,29 +370,29 @@ void StereoPoseExtractor::visualize(bool * keep_on)
   cv::Mat cam0pnts, cam1pnts;
   getPoints(cam0pnts,cam1pnts);
 
-  std::cout << "columns " << cam0pnts.cols << std::endl;
-
   //TODO: draw circles of different colors depending on body index 
-  for(int i = 0; i < cam0pnts.cols/18; i = i + 18)
+  for(int i = 0; i < cam0pnts.cols/18; i++)
   { 
     std::cout << "i: " << i << std::endl;
     for (int j = 0; j < 18; j++)
     {
     cv::Point3d pc = cam0pnts.at<cv::Point3d>(0,j + (i*18));
     cv::Point2d p(pc.x, pc.y);
-    cv::Scalar color = cv::Scalar(255,255,0);
-    cv::circle(outputImageL_,p,6,color,5);
+    cv::putText(outputImageL_, std::to_string(i), p,  cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(200,200,250),1,CV_AA);
+    //cv::Scalar color = cv::Scalar(255 - (i*75),0,i*70);
+    //cv::circle(outputImageL_,p,6,color,5);
     }
   }
 
-  for(int i = 0; i < cam1pnts.cols/18; i = i + 18)
+  for(int i = 0; i < cam1pnts.cols/18; i++)
   {
     for (int j = 0; j < 18; j++)
     {
     cv::Point3d pc = cam1pnts.at<cv::Point3d>(0,j + (i*18));
     cv::Point2d p(pc.x, pc.y);
-    cv::Scalar color = cv::Scalar(i*55,0,0);
-    cv::circle(outputImageR_,p,6,color,5);
+    cv::putText(outputImageR_, std::to_string(i), p, cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(200,200,250),1,CV_AA);
+    //cv::Scalar color = cv::Scalar(255 - (i*75),0,i*70);
+    //cv::circle(outputImageR_,p,6,color,5);
     }
   }
 

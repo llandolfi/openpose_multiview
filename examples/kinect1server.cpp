@@ -1,4 +1,4 @@
-#include "kinect1/freenect_grabber.hpp"
+#include "freenect_grabber.hpp"
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>

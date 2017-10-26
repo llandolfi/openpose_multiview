@@ -23,7 +23,7 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include "shared_memory_log.hpp"
-#include "kinect1/freenect_grabber.hpp"
+#include "freenect_grabber.hpp"
 #include "ipcpooledchannel.hpp"
 #include <chrono>
 #include "channel_wrapper.hpp"
@@ -384,7 +384,7 @@ int main(int argc, char **argv) {
     while(keep_on)
     {
       cap >> image.color_;
-      if(myframe % 8 == 0)
+      if(myframe % 10 == 0)
       {
         double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on);
       }

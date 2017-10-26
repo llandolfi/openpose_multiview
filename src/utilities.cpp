@@ -386,11 +386,13 @@ void body2VecofPoints(const cv::Mat & body, std::vector<cv::Point2d> & v)
 }
 
 
-double computeDiff(const cv::Mat & ml, const cv::Mat & mr, int cn = 4)
+double computeDiff(const cv::Mat & ml, const cv::Mat & mr, int offset, int cn = 4)
 {
   //TODO: get only the bodypoints in common
   std::vector<cv::Point2d> pl;
   std::vector<cv::Point2d> pr;
+
+  cv::Point2d offpoint((double)offset, 0.0);
 
   body2VecofPoints(ml,pl);
   body2VecofPoints(mr,pr);
@@ -403,7 +405,7 @@ double computeDiff(const cv::Mat & ml, const cv::Mat & mr, int cn = 4)
   {
     if (pl[j] != cv::Point2d(0,0) && pr[j] != cv::Point2d(0,0))
     {
-      acc = acc + cv::norm(pl[j]-pr[j]);
+      acc = acc + cv::norm((pl[j]+offpoint)-pr[j]);
       i++;
     }
     j++;
@@ -412,7 +414,7 @@ double computeDiff(const cv::Mat & ml, const cv::Mat & mr, int cn = 4)
   return acc; 
 }
 
-void associate(const std::vector<cv::Mat> & bodies_left, const std::vector<cv::Mat> & bodies_right, std::vector<int> & minindsL)
+void associate(const std::vector<cv::Mat> & bodies_left, const std::vector<cv::Mat> & bodies_right, std::vector<int> & minindsL, int offset = 0)
 {
 
   minindsL.resize(bodies_left.size());
@@ -424,8 +426,8 @@ void associate(const std::vector<cv::Mat> & bodies_left, const std::vector<cv::M
     double mindiff = 9999999;
 
     for(int j = 0; j < bodies_right.size(); j++)
-    {
-      double diff = computeDiff(bodies_left[i], bodies_right[j]);
+    { 
+      double diff = computeDiff(bodies_left[i], bodies_right[j], offset);
       if( diff < mindiff)
       {
         mindiff = diff;
@@ -454,7 +456,7 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
   std::vector<int> minindsR;
 
   associate(bodies_left, bodies_right, minindsL);
-  associate(bodies_right, bodies_right, minindsR);
+  associate(bodies_right, bodies_left, minindsR);
 
   std::cout << "Min inds L " << std::endl;
   for (auto e : minindsL)
@@ -486,7 +488,7 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
 
   for(std::map<int,int>::iterator it = corresp.begin(); it != corresp.end(); ++it)
   {
-    std::cout << "associating left " << it->first << " with right " << it->second << std::endl;
+    std::cout << "associating left " << it->second << " with right " << it->first << std::endl;
     //std::cout << "left size: " << bodies_left.size() << " right size: " << bodies_right.size() << std::endl;
     proper_right.push_back(bodies_right[it->first]);
     proper_left.push_back(bodies_left[it->second]);
