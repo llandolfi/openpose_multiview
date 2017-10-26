@@ -568,6 +568,5 @@ void PoseProcess(const OpenPoseParams & params, const cv::Mat & inputImage, op::
    params.poseRenderer_->renderPose(outputArray, poseKeypoints, scaleInputToOutput);
    // Step 6 - OpenPose output format to cv::Mat
    outputImage = params.opOutputToCvMatL_.formatToCvMat(outputArray);
-
 }
 

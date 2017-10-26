@@ -72,7 +72,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   const bool enableGoogleLogging = true;
   // Step 2 - Read Google flags (user defined configuration)
   // outputSize
-  const auto outputSize = op::flagsToPoint(resolution, "1280x720");
+  const auto outputSize = op::flagsToPoint(resolution, "2560x720");
   // netInputSize
   const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "640x480");
   // netOutputSize
@@ -143,10 +143,13 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   double error = 0.0;  
 
   extract(image);
+  //std::cout << "extracted " << std::endl;
 
   process(FLAGS_write_keypoint, FLAGS_visualize);
+  //std::cout << "processed " << std::endl;
 
   error = triangulate(points3D);
+  //std::cout << "triangulated " << std::endl;
 
   if(FLAGS_udp_port != 0)
   {
@@ -197,7 +200,11 @@ void PoseExtractor::setDepth(const cv::Mat & m)
 StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution), 
                                             cam_(resolution)
 {  
-
+  //TODO: change resolution string. Double width
+  std::string res2 = std::to_string(getWidth(resolution)*2) + "x" + std::to_string(getHeight(resolution));
+  const auto outputSize = op::flagsToPoint(res2, "2560x720");
+  const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "640x480");
+  pose_params_.scaleAndSizeExtractor_ = new op::ScaleAndSizeExtractor (netInputSize, outputSize, FLAGS_scale_number, FLAGS_scale_gap);
 }
 
 StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::string resolution, int fps) : StereoPoseExtractor(argc,argv,resolution)
@@ -296,7 +303,8 @@ void StereoPoseExtractor::extract(const ImageFrame & image)
 {
 
   cur_frame_ ++;
-  splitVertically(image.color_, imageleft_, imageright_);
+  imageleft_ = image.color_;
+  //splitVertically(image.color_, imageleft_, imageright_);
 
 }
 
@@ -317,14 +325,14 @@ void StereoPoseExtractor::process(const std::string & write_keypoint, bool viz)
 { 
 
   PoseExtractor::process(write_keypoint, viz);
-  
-  PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
 
-  if( write_keypoint != "")
+  //TODO: all keypoints in poseKeypointsL, make emitCSV coherent
+
+ /* if( write_keypoint != "")
   {
     emitCSV(outputfile_, poseKeypointsL_, 0, cur_frame_);
     emitCSV(outputfile_, poseKeypointsR_, 1, cur_frame_);
-  }
+  }*/
 
   if( viz)
   {
@@ -332,10 +340,62 @@ void StereoPoseExtractor::process(const std::string & write_keypoint, bool viz)
   }
 }
 
-void StereoPoseExtractor::getPoints(cv::Mat & outputL, cv::Mat & outputR)
+bool isLeft(const cv::Mat & pset, int offset, int width)
 {
-  opArray2Mat(poseKeypointsL_, outputL);
-  opArray2Mat(poseKeypointsR_, outputR);
+
+  for(int i = 0; i < 18; i++)
+  {
+    if (pset.at<cv::Point3d>(0,offset + i).x > width)
+    {
+      return false;
+    }
+  }
+
+  return true;
+
+}
+
+void StereoPoseExtractor::getPoints(cv::Mat & outputL, cv::Mat & outputR)
+{ 
+  cv::Mat tmp;
+  opArray2Mat(poseKeypointsL_, tmp);
+
+  std::vector<cv::Point3d> bl;
+  std::vector<cv::Point3d> br;
+
+  for(int i=0; i < tmp.cols/18; i+=1)
+  {
+    std::vector<cv::Point3d> * to_add = nullptr;
+
+    if(isLeft(tmp, i*18, cam_.width_))
+    {
+      to_add = &bl;
+    }
+    else
+    { 
+      to_add = &br;
+    }
+
+    for(int j=0; j < 18; j++)
+    {
+      to_add->push_back(tmp.at<cv::Point3d>(0,(i*18)+j));
+    }
+  }
+
+  outputL = cv::Mat(1,bl.size(),CV_64FC3);
+  outputR = cv::Mat(1,br.size(),CV_64FC3);
+
+  for(int i = 0; i < outputL.cols; i++)
+  {
+    outputL.at<cv::Point3d>(0,i) = bl[i];
+  }
+
+  for(int i = 0; i < outputR.cols; i++)
+  {
+    br[i].x -= cam_.width_;
+    outputR.at<cv::Point3d>(0,i) = br[i];
+  }
+
 }
 
 /*
@@ -364,45 +424,38 @@ double StereoPoseExtractor::triangulate(cv::Mat & finalpoints)
 
 void StereoPoseExtractor::visualize(bool * keep_on)
 { 
-
+  cv::Mat tmp;
   cv::Mat cam0pnts, cam1pnts;
+  //opArray2Mat(poseKeypointsL_, tmp);
+
   getPoints(cam0pnts,cam1pnts);
 
-  //TODO: draw circles of different colors depending on body index 
   for(int i = 0; i < cam0pnts.cols/18; i++)
   { 
-    std::cout << "i: " << i << std::endl;
     for (int j = 0; j < 18; j++)
     {
     cv::Point3d pc = cam0pnts.at<cv::Point3d>(0,j + (i*18));
     cv::Point2d p(pc.x, pc.y);
-    cv::putText(outputImageL_, std::to_string(i), p,  cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(200,200,250),1,CV_AA);
+    cv::putText(outputImageL_, std::to_string(i), p,  cv::FONT_HERSHEY_COMPLEX_SMALL, 1.1, cvScalar(200,200,250),1,CV_AA);
     //cv::Scalar color = cv::Scalar(255 - (i*75),0,i*70);
     //cv::circle(outputImageL_,p,6,color,5);
     }
   }
 
   for(int i = 0; i < cam1pnts.cols/18; i++)
-  {
+  { 
     for (int j = 0; j < 18; j++)
     {
     cv::Point3d pc = cam1pnts.at<cv::Point3d>(0,j + (i*18));
-    cv::Point2d p(pc.x, pc.y);
-    cv::putText(outputImageR_, std::to_string(i), p, cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(200,200,250),1,CV_AA);
+    cv::Point2d p(pc.x + cam_.width_, pc.y);
+    cv::putText(outputImageL_, std::to_string(i), p,  cv::FONT_HERSHEY_COMPLEX_SMALL, 1.1, cvScalar(200,200,250),1,CV_AA);
     //cv::Scalar color = cv::Scalar(255 - (i*75),0,i*70);
-    //cv::circle(outputImageR_,p,6,color,5);
+    //cv::circle(outputImageL_,p,6,color,5);
     }
   }
 
-
-
-  //TODO: make a video with 2 frame side by side
-  cv::Mat sidebyside_out;
-  cv::hconcat(outputImageL_, outputImageR_, sidebyside_out);
-
-
   cv::namedWindow("Side By Side", CV_WINDOW_AUTOSIZE);
-  cv::imshow("Side By Side", sidebyside_out);
+  cv::imshow("Side By Side", outputImageL_);
 
   short k = cvWaitKey(2);
   if (k == 27)
@@ -414,10 +467,13 @@ void StereoPoseExtractor::visualize(bool * keep_on)
 
 void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 { 
-
+  cv::Mat verification, verificationL;
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
 
-  cv::Mat verification = outputImageR_.clone();
+  splitVertically(outputImageL_,verificationL,verification);
+
+  std::cout << outputImageL_.cols << " " << outputImageL_.rows << std::endl;
+  std::cout << verification.cols  << " " << verification.rows << std::endl;
 
   if(!pnts.empty())
   {
