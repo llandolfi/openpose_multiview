@@ -22,12 +22,14 @@
 struct OpenPoseParams{
 
 
-	op::CvMatToOpInput *cvMatToOpInput_;
-	op::CvMatToOpOutput *cvMatToOpOutput_;
-	op::PoseExtractorCaffe *poseExtractorCaffeL_;
-	op::PoseRenderer *poseRendererL_;
-	op::OpOutputToCvMat *opOutputToCvMatL_;
-	op::OpOutputToCvMat *opOutputToCvMatR_;
+	op::CvMatToOpInput cvMatToOpInput_;
+	op::CvMatToOpOutput cvMatToOpOutput_;
+	op::ScaleAndSizeExtractor * scaleAndSizeExtractor_;
+	op::PoseExtractorCaffe *poseExtractorCaffe_;
+	op::PoseCpuRenderer *poseRenderer_;
+	op::OpOutputToCvMat opOutputToCvMatL_;
+	op::OpOutputToCvMat opOutputToCvMatR_;
+	op::FrameDisplayer *frameDisplayer_;
 
 };
 
