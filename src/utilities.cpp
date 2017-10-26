@@ -563,7 +563,7 @@ void PoseProcess(const OpenPoseParams & params, const cv::Mat & inputImage, op::
    params.poseExtractorCaffe_->forwardPass(netInputArray, imageSize, scaleInputToNetInputs);
    poseKeypoints = params.poseExtractorCaffe_->getPoseKeypoints();
    // Step 5 - Render poseKeypoints
-   params.poseRenderer_->renderPose(outputArray, poseKeypoints);
+   params.poseRenderer_->renderPose(outputArray, poseKeypoints, scaleInputToOutput);
    // Step 6 - OpenPose output format to cv::Mat
    outputImage = params.opOutputToCvMatL_.formatToCvMat(outputArray);
 

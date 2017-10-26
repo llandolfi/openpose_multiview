@@ -82,9 +82,8 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
 
   pose_params_.scaleAndSizeExtractor_ = new op::ScaleAndSizeExtractor (netInputSize, outputSize, FLAGS_scale_number, FLAGS_scale_gap);
 
-  pose_params_.poseExtractorCaffe_ = new op::PoseExtractorCaffe{netInputSize, netOutputSize, outputSize, FLAGS_scale_number, poseModel,
-                                               FLAGS_model_folder, FLAGS_num_gpu_start, {}, op::ScaleMode::ZeroToOne,
-                                               enableGoogleLogging};
+  pose_params_.poseExtractorCaffe_ = new op::PoseExtractorCaffe{poseModel, FLAGS_model_folder,
+                                        FLAGS_num_gpu_start, {}, op::ScaleMode::ZeroToOne, enableGoogleLogging};
   pose_params_.poseRenderer_ = new op::PoseCpuRenderer {poseModel, (float)FLAGS_render_threshold, !FLAGS_disable_blending,
                                       (float)FLAGS_alpha_pose};
   pose_params_.frameDisplayer_ = new op::FrameDisplayer{"OpenPose multiview", outputSize};

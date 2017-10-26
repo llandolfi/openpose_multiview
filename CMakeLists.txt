@@ -4,8 +4,6 @@ project( StereoPose )
 
 add_definitions(--std=c++11)
 
-SET( CAFFE_DIR /home/giacomo/libraries/openpose/build/caffe)
-
 find_package(OpenMP)
 if (OPENMP_FOUND) 
 
@@ -89,7 +87,6 @@ find_package( CUDA REQUIRED)
 if (CUDA_FOUND)
     INCLUDE_DIRECTORIES(
         ${CUDA_INCLUDE_DIRS}
-        ${CAFFE_DIR}/distribute/include
     )
     include_directories( include )
     include_directories( ${Boost_INCLUDE_DIRS} )
@@ -108,7 +105,7 @@ if (CUDA_FOUND)
         ${libuvc_LIBRARIES} 
         ${OpenCV_LIBS}
         ${Boost_LIBRARIES}
-        ${CAFFE_DIR}/lib/libcaffe.so
+        caffe
         glog
         gflags
         openpose
