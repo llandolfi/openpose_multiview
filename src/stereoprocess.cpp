@@ -323,11 +323,13 @@ void StereoPoseExtractor::appendFrame(const ImageFrame & myframe)
 //TODO: save time by using OpenPose in a single image? 
 void StereoPoseExtractor::process(const std::string & write_keypoint, bool viz)
 { 
-
+  
   PoseExtractor::process(write_keypoint, viz);
 
-  //TODO: all keypoints in poseKeypointsL, make emitCSV coherent
+  //TODO: postprocess the points. Remove the bodies that are between the two images
+  
 
+  //TODO: all keypoints in poseKeypointsL, make emitCSV coherent
  /* if( write_keypoint != "")
   {
     emitCSV(outputfile_, poseKeypointsL_, 0, cur_frame_);
