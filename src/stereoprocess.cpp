@@ -143,13 +143,10 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   double error = 0.0;  
 
   extract(image);
-  //std::cout << "extracted " << std::endl;
 
   process(FLAGS_write_keypoint, FLAGS_visualize);
-  //std::cout << "processed " << std::endl;
 
   error = triangulate(points3D);
-  //std::cout << "triangulated " << std::endl;
 
   if(FLAGS_udp_port != 0)
   {
@@ -517,6 +514,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   { 
     std::cout << "SAVING " << std::endl;
     cv::imwrite("../data/3Dpoints.jpg", verification);
+    cv::imwrite("../data/2Dpoints.jpg", outputImageL_);
   }
 }
 

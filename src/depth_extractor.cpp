@@ -9,7 +9,7 @@ bool inited = false;
 
 DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
 {
-
+  std::cout << "resolution: " << resolution << std::endl;
   pcam_ = new DepthCamera();
 }
 
@@ -78,13 +78,15 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   //Maybe smooth a little bit like in disparity?
   for( int i = 0; i < cam0pnts.cols; i++)
   { 
-    cv::Point2d keypoint = cam0pnts.at<cv::Point2d>(0,i);
 
-    cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
+    cv::Point3d kpwc = cam0pnts.at<cv::Point3d>(0,i);
+    cv::Point2d keypoint(cvRound(kpwc.x), cvRound(kpwc.y));
+
+    cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
                         (double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
                         //Pool(depth_, keypoint.x, keypoint.y, 1,MinPool));
 
-    uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
+    uint16_t ddepth = depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x));
 
     if(ddepth > 0 && point.x != 0.0 && point.y != 0.0)
     {
@@ -183,7 +185,7 @@ void DepthExtractor::prepareVideo(const std::string & path)
 {
 
   cv::Size S = cv::Size(640, 480);
-  outputVideo_.open(path, CV_FOURCC('M','J','P','G'), 30, S, true);
+  outputVideo_.open(path, CV_FOURCC('P','I','M','1'), 30, S, true);
   if (!outputVideo_.isOpened())
   {
       std::cout  << "Could not open the output video for write: " << std::endl;
@@ -191,7 +193,7 @@ void DepthExtractor::prepareVideo(const std::string & path)
   }
 
   std::string depthpath = path + "depth.avi";
-  depthoutput_.open(depthpath, CV_FOURCC('M','J','P','G'), 30, S, true);
+  depthoutput_.open(depthpath, CV_FOURCC('P','I','M','1'), 30, S, true);
   if (!depthoutput_.isOpened())
   {
       std::cout  << "Could not open the depth output video for write: " << std::endl;
