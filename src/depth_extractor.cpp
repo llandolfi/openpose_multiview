@@ -13,6 +13,48 @@ DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resoluti
   pcam_ = new DepthCamera();
 }
 
+std::string DepthExtractor::pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
+{
+
+  Json::Value points;
+  Json::Value colors;
+
+
+  for(int i = 0; i < pnts.cols; i++)
+  { 
+    cv::Vec3d point = pnts.at<cv::Vec3d>(0,i);
+    Json::Value jpoint;
+    jpoint["x"] = -point[0];
+    jpoint["y"] = -point[1];
+    jpoint["z"] = point[2];
+    points.append(jpoint);
+  }
+
+  
+  colors["r"] = 1.0;
+  colors["g"] = 0;
+  colors["b"] = 0;
+  
+
+  Json::Value root;
+  root["type"] = "bodypoints";
+  root["frame"] = frame;
+  root["id"] = "uniquestring";
+  root["radius"] = 0.08;
+  root["pointorder"] = "openpose";
+  root["color"] = colors;
+  root["points"] = points;
+  root["timestamp"] = time;
+
+  Json::FastWriter writer;
+  Json::StyledWriter writerp;
+
+  //std::cout << "sending: " << std::endl;
+  //std::cout << writerp.write(root) << std::endl;
+
+  return writer.write(root);
+}
+
 /*
 * x: point coordinate in pixel
 * y: point coordinate in pixel
@@ -78,13 +120,14 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   //Maybe smooth a little bit like in disparity?
   for( int i = 0; i < cam0pnts.cols; i++)
   { 
-    cv::Point2d keypoint = cam0pnts.at<cv::Point2d>(0,i);
+    cv::Point3d pwithnot = cam0pnts.at<cv::Point3d>(0,i);
+    cv::Point2d keypoint(cvRound(pwithnot.x), cvRound(pwithnot.y));
 
     cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
-                        (double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
+                        (double)depth_.at<uint16_t>(cvRound(keypoint.x), cvRound(keypoint.y)));
                         //Pool(depth_, keypoint.x, keypoint.y, 1,MinPool));
 
-    uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
+    uint16_t ddepth = depth_.at<uint16_t>(keypoint.x, keypoint.y);
 
     if(ddepth > 0 && point.x != 0.0 && point.y != 0.0)
     {

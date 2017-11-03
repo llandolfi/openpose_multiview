@@ -94,7 +94,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   pcam_-> fps_ = fps;
 } 
 
-std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
+std::string StereoPoseExtractor::pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
 {
 
   Json::Value points;

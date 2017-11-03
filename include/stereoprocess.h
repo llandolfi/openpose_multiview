@@ -54,6 +54,8 @@ struct PoseExtractor {
 
 	virtual void prepareVideo(const std::string & path)=0;
 
+	virtual std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)=0;
+
 	virtual void setDepth(const cv::Mat & m);
 
 	virtual void init();
@@ -109,6 +111,8 @@ struct DepthExtractor : PoseExtractor {
 
 	cv::Point3d getPointFromDepth(double u, double v, double z);
 
+	std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time);
+
 	cv::Mat RGB_;
 
 	cv::VideoWriter depthoutput_; 
@@ -127,6 +131,8 @@ struct StereoPoseExtractor : PoseExtractor {
 	void triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints);
 
 	void parseIntrinsicMatrix(const std::string path = "../settings/SN1499.conf");
+
+	std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time);
 
 	virtual void getPoints(cv::Mat &, cv::Mat &);
 
@@ -170,6 +176,8 @@ struct DisparityExtractor : StereoPoseExtractor {
 	double avgDisp(const cv::Mat & disp, int u, int v, int side = 5);
 
 	void verifyD(const cv::Mat & pnts, bool* keep_on);
+
+	std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time);
 
 	virtual void extract(const ImageFrame & image);
 

@@ -2,6 +2,11 @@
 #include "utilities.hpp"
 #include <math.h>
 
+std::string DisparityExtractor::pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
+{
+  return "";
+}
+
 DisparityExtractor::DisparityExtractor(int argc, char **argv, const std::string resolution) : StereoPoseExtractor(argc,argv,resolution){
 
   double f = cam_.intrinsics_left_.at<double>(0,0);
