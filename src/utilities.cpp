@@ -535,12 +535,17 @@ double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(c
   double wlb,hlb;
   double wside,hside;
 
-  wlb = std::max(0,u - side);
-  hlb = std::max(0,v - side);
+  wlb = std::max(0,v - side);
+  hlb = std::max(0,u - side);
 
-  wside = std::min(disp.cols - u, side);
-  hside = std::min(disp.rows - v, side);
+  wside = std::min(disp.rows - v, side);
+  hside = std::min(disp.cols - u, side);
 
+/*
+  std::cout << "rows: " << disp.rows << " columns: " << disp.cols << std::endl;
+  std::cout << "u: " << u << " v: " << v << std::endl;
+  std::cout << "wlb: " << wlb << " hlb: " << hlb << " wside: " << wside << " hside: " << hside << std::endl;
+*/
   cv::Mat matrix(disp(cv::Rect(wlb,hlb,side,side)));
 
   return function(matrix);

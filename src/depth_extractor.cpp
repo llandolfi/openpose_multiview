@@ -11,6 +11,7 @@ DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resoluti
 {
 
   pcam_ = new DepthCamera();
+
 }
 
 std::string DepthExtractor::pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
@@ -74,8 +75,8 @@ cv::Point3d DepthExtractor::getPointFromDepth(double u, double v, double z)
   double cy = pcam_->intrinsics_.at<double>(1,2);
 
   double Z = z;
-  double X = ((u - cx) * Z)/fx;
-  double Y = ((v - cy) * Z)/fy;
+  double X = ((v - cx) * Z)/fx;
+  double Y = ((u - cy) * Z)/fy;
 
   return cv::Point3d(X,Y,Z);
 
@@ -101,10 +102,10 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
 
   double epsilon = 100;
-  //I can take all the points negleting if they belong to a specific person 
-  //how can I know if the points belong to the same person? 
   cv::Mat cam0pnts;
+  double confidence = 0.0;
   opArray2Mat(poseKeypointsL_, cam0pnts);
+
 
   if(cam0pnts.empty())
   {
@@ -121,15 +122,31 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   for( int i = 0; i < cam0pnts.cols; i++)
   { 
     cv::Point3d pwithnot = cam0pnts.at<cv::Point3d>(0,i);
+    confidence = pwithnot.z;
     cv::Point2d keypoint(cvRound(pwithnot.x), cvRound(pwithnot.y));
 
-    cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
-                        (double)depth_.at<uint16_t>(cvRound(keypoint.x), cvRound(keypoint.y)));
-                        //Pool(depth_, keypoint.x, keypoint.y, 1,MinPool));
+   // std::cout << "Keypoints " << poseKeypointsL_.toString() << std::endl;
+   // std::cout << "rows: " << depth_.rows << " columns: " << depth_.cols << std::endl;
 
-    uint16_t ddepth = depth_.at<uint16_t>(keypoint.x, keypoint.y);
+    if(keypoint.x > depth_.cols)
+    {
+      std::cout << "Attenzione x " << keypoint.x << std::endl;
+      exit(-1);
+    }
 
-    if(ddepth > 0 && point.x != 0.0 && point.y != 0.0)
+    if(keypoint.y > depth_.rows)
+    {
+      std::cout << "Attenzione y " << keypoint.y << std::endl;
+      exit(-1);
+    }
+
+    cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
+                        //(double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
+                        Pool(depth_, keypoint.y, keypoint.x, 3, AvgPool));
+
+    uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
+
+    if(ddepth > 0 && point.x != 0.0 && point.y != 0.0 && confidence > 0.4)
     {
       point = point / 1000;
       points3D.push_back(point);
