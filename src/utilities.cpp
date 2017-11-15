@@ -532,14 +532,20 @@ double AvgPool(const cv::Mat & matrix)
 double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(const cv::Mat &)> function)
 { 
 
+  if(side % 2 == 0)
+  {
+    std::cout << "even side not admitted " << std::endl;
+    exit(-1);
+  }
+
   double wlb,hlb;
   double wside,hside;
 
-  wlb = std::max(0,v - side);
-  hlb = std::max(0,u - side);
+  wlb = std::max(0,v - side/2);
+  hlb = std::max(0,u - side/2);
 
-  wside = std::min(disp.rows - v, side);
-  hside = std::min(disp.cols - u, side);
+  wside = std::min(disp.rows - v, side/2);
+  hside = std::min(disp.cols - u, side/2);
 
 /*
   std::cout << "rows: " << disp.rows << " columns: " << disp.cols << std::endl;
@@ -547,6 +553,8 @@ double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(c
   std::cout << "wlb: " << wlb << " hlb: " << hlb << " wside: " << wside << " hside: " << hside << std::endl;
 */
   cv::Mat matrix(disp(cv::Rect(wlb,hlb,side,side)));
+ // std::cout << "kernel " << std::endl;
+ // std::cout << matrix << std::endl;
 
   return function(matrix);
 }
