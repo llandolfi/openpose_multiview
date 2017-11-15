@@ -120,8 +120,8 @@ if (CUDA_FOUND)
     install( FILES ${HEADERS} DESTINATION include/stereoutils )
 
 
-    ADD_EXECUTABLE( stereopose_rt examples/online.cpp )
-    ADD_EXECUTABLE( stereopose_of examples/offline.cpp )
+    ADD_EXECUTABLE( stereopose_rt examples/videoprocess.cpp )
+    ADD_EXECUTABLE( stereopose_of examples/fileprocess.cpp )
     ADD_EXECUTABLE( k1server examples/kinect1server.cpp )
 
     TARGET_LINK_LIBRARIES(stereopose_rt

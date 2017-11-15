@@ -47,9 +47,11 @@ DEFINE_bool(disparity,                  false,            "Use disparity map ins
 DEFINE_string(resolution,               "1280x720",     "The image resolution (display and output). Use \"-1x-1\" to force the program to use the"
                                                         " default images resolution.");  
 
-DEFINE_string(camera,                   "ZED",           "The camera used for streaming (ZED,K1)");  
+DEFINE_string(camera,                   "ZED",          "The camera used for streaming (ZED,K1)");  
 
 DEFINE_string(write_video,              "",             "Full file path to write rendered frames in motion JPEG video format.");
+
+DEFINE_int32(skip,                       0,             "Number of frame to skip when processing video");
 
 
 PoseExtractor * stereoextractor;
@@ -341,8 +343,6 @@ int main(int argc, char **argv) {
       thread_list.push_back(std::thread(saveVideo, stereoextractor, pc_camera.getNewChannel(true, false)));
     }
 
-    //std::thread * producer;
-
     switch(camera_map[FLAGS_camera])
     {
       case 0: 
@@ -380,14 +380,17 @@ int main(int argc, char **argv) {
     cv::Mat pnts;
     ImageFrame image;
     uint64_t myframe = 0;
+    int skip = FLAGS_skip + 1;
 
     while(keep_on)
     {
       cap >> image.color_;
-      if(myframe % 10 == 0)
-      {
+        
+      if(myframe % skip == 0)
+      { 
         double error = stereoextractor->go(image,FLAGS_verify,pnts,&keep_on);
       }
+      
       myframe ++;
     }
 
