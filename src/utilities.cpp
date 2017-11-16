@@ -514,6 +514,7 @@ double MaxPool(const cv::Mat & matrix)
 
 double MinPool(const cv::Mat & matrix)
 {
+
   double min,max = 0.0;
   cv::minMaxLoc(matrix,&min,&max);
 
@@ -529,32 +530,61 @@ double AvgPool(const cv::Mat & matrix)
   return sum / (double)nonzero;
 }
 
-double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(const cv::Mat &)> function)
+double MinPoolDepth(cv::Mat & matrix)
+{
+
+  for(int i = 0; i < matrix.rows; i++)
+  {
+    for (int j= 0; j < matrix.cols; j++)
+    {
+      if(matrix.at<uint16_t>(i,j) == 0)
+      {
+        matrix.at<uint16_t>(i,j) = 65535;
+      }
+    }
+  }
+
+  /*std::cout << "kernel " << std::endl;
+  std::cout << matrix << std::endl;*/
+
+  double min = MinPool(matrix);
+
+  if(min == 65535)
+  {
+    min = 0.0;
+  }
+
+  //std::cout << "returning " << min << std::endl;
+
+  return min;
+}
+
+double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(cv::Mat &)> function)
 { 
 
   if(side % 2 == 0)
   {
-    std::cout << "even side not admitted " << std::endl;
+    std::cout << "even kernel size not permitted " << std::endl;
     exit(-1);
   }
 
   double wlb,hlb;
   double wside,hside;
 
-  wlb = std::max(0,v - side/2);
-  hlb = std::max(0,u - side/2);
+  wlb = std::max(0,u - side/2);
+  hlb = std::max(0,v - side/2);
 
-  wside = std::min(disp.rows - v, side/2);
-  hside = std::min(disp.cols - u, side/2);
+  wside = std::min(disp.rows - u, side);
+  hside = std::min(disp.cols - v, side);
 
-/*
-  std::cout << "rows: " << disp.rows << " columns: " << disp.cols << std::endl;
+  int nside = std::min(wside,hside);
+  /*
+  std::cout << "creating matrix" << std::endl;
+  std::cout << "rows: " << disp.rows << " cols: " << disp.cols << std::endl;
   std::cout << "u: " << u << " v: " << v << std::endl;
   std::cout << "wlb: " << wlb << " hlb: " << hlb << " wside: " << wside << " hside: " << hside << std::endl;
-*/
-  cv::Mat matrix(disp(cv::Rect(wlb,hlb,side,side)));
- // std::cout << "kernel " << std::endl;
- // std::cout << matrix << std::endl;
+  */
+  cv::Mat matrix(disp(cv::Rect(hlb,wlb,nside,nside)));
 
   return function(matrix);
 }

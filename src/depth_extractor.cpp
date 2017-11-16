@@ -142,7 +142,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
                         //(double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
-                        Pool(depth_, keypoint.y, keypoint.x, 3, AvgPool));
+                        Pool(depth_, keypoint.y, keypoint.x, 5, AvgPool));
 
     uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
 
