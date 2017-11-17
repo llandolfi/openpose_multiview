@@ -222,6 +222,22 @@ void StereoPoseExtractor::prepareVideo(const std::string & path)
   jsonfile_.open(path + ".json"); 
 }
 
+void filterUncertain(const double thresh, cv::Mat & input)
+{ 
+
+  std::vector<cv::Vec3d> v;
+
+  for(int i = 0; i < input.cols; i++)
+  {
+    cv::Vec3d point = input.at<cv::Vec3d>(0,i);
+    if(point[2] < thresh)
+    {
+      input.at<cv::Vec3d>(0,i) = cv::Vec3d(0.0,0.0,0.0);
+    }
+  }
+
+}
+
 //N.B. cam0pnts holds also confidence
 void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints)
 { 
@@ -234,6 +250,11 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
     std::cout << "One Image did not get points. No correspondences can be found!" << std::endl;
     return;
   }
+
+  //remve the points with confidence less yhan a threshold
+  filterUncertain(0.55, cam0pnts);
+  filterUncertain(0.55, cam1pnts);
+  
 
   std::map<int,int> correspondences;
   findCorrespondences(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
