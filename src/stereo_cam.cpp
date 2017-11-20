@@ -1,6 +1,14 @@
 #include "stereo_cam.h"
 
+std::string Camera::getResolution()
+{
+  return std::to_string(width_) + "x" + std::to_string(height_);
+}
+
 StereoCamera::StereoCamera(const std::string resolution) : resolution_(resolution)
+{  }
+
+ZED::ZED(const std::string resolution) : resolution_(resolution)
 { 
 
   std::cout << "resolution " << resolution_ << std::endl;
@@ -39,12 +47,12 @@ StereoCamera::StereoCamera(const std::string resolution) : resolution_(resolutio
       intrinsics.at<double>(1,1) = fy;
       intrinsics.at<double>(1,2) = cy;
 
-      intrinsics_left_ = intrinsics.clone();
+      camera_left_.intrinsics_ = intrinsics.clone();
 
       dist_coeffs.at<double>(0,0) = getDouble(lines[i+5],"=");
       dist_coeffs.at<double>(0,1) = getDouble(lines[i+6],"=");
 
-      dist_left_ = dist_coeffs.clone();
+      camera_left_.dist_ = dist_coeffs.clone();
 
       i = i + 7;
 
@@ -58,12 +66,12 @@ StereoCamera::StereoCamera(const std::string resolution) : resolution_(resolutio
       intrinsics.at<double>(1,1) = fy;
       intrinsics.at<double>(1,2) = cy;
 
-      intrinsics_right_ = intrinsics.clone();
+      camera_right_.intrinsics_ = intrinsics.clone();
 
       dist_coeffs.at<double>(0,0) = getDouble(lines[i+5],"=");
       dist_coeffs.at<double>(0,1) = getDouble(lines[i+6],"=");
 
-      dist_right_ = dist_coeffs.clone();
+      camera_right_.dist_ = dist_coeffs.clone();
 
       break;
 

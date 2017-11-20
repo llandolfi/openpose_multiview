@@ -22,14 +22,22 @@
 #include <gflags/gflags.h> // DEFINE_bool, DEFINE_int32, DEFINE_int64, DEFINE_uint64, DEFINE_double, DEFINE_string
 #include <glog/logging.h> // google::InitGoogleLogging
 
-
-struct PinholeCamera{
-
-	PinholeCamera() {}
-	PinholeCamera(const std::string params_path);
+struct Camera
+{
+	Camera(){}
 
 	int width_,height_;
 	int fps_;
+
+	std::string getResolution();
+
+}
+
+
+struct PinholeCamera : Camera { 
+
+	PinholeCamera() {}
+	PinholeCamera(const std::string params_path);
 
 	cv::Mat intrinsics_;
 	cv::Mat dist_;
@@ -48,35 +56,28 @@ struct DepthCamera : PinholeCamera{
 };
 
 
-struct StereoCamera {
-
+struct StereoCamera : Camera {
 
 	StereoCamera(const std::string resolution);
 
 	void dump();
 
-	cv::Mat getIntrinsicsLeft()
-	{
-		return intrinsics_left_;
-	}
-
 	std::string resolution_;
-	std::string resolution_code_;
-	std::string path_ = "../settings/SN1499.conf";
 
-	int width_,height_;
-	int fps_;
-
-	cv::Mat intrinsics_left_;
-	cv::Mat intrinsics_right_;
-	cv::Mat RT_left_;
-	cv::Mat RT_right_;
-	cv::Mat dist_left_;
-	cv::Mat dist_right_;
+	PinholeCamera camera_left_;
+	PinholeCamera camera_right_;
 
 	/*Rotation matrix between the coordinate systems of the first and second cameras*/
 	cv::Mat SR_;
 	/*Translation vector between coordinate systems of cameras*/
 	cv::Vec3d ST_;
+};
+
+struct ZED : StereoCamera {
+
+	ZED(const std::string resolution);
+
+	std::string resolution_code_;
+	std::string path_ = "../settings/SN1499.conf";	
 
 };

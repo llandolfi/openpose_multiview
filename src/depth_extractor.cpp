@@ -243,7 +243,7 @@ void DepthExtractor::prepareVideo(const std::string & path)
 {
 
   cv::Size S = cv::Size(640, 480);
-  outputVideo_.open(path, CV_FOURCC('M','J','P','G'), 30, S, true);
+  outputVideo_.open(path, CV_FOURCC('D','I','V','X'), 30, S, true);
   if (!outputVideo_.isOpened())
   {
       std::cout  << "Could not open the output video for write: " << std::endl;
@@ -251,7 +251,7 @@ void DepthExtractor::prepareVideo(const std::string & path)
   }
 
   std::string depthpath = path + "depth.avi";
-  depthoutput_.open(depthpath, CV_FOURCC('M','J','P','G'), 30, S, true);
+  depthoutput_.open(depthpath, CV_FOURCC('D','I','V','X'), 30, S, true);
   if (!depthoutput_.isOpened())
   {
       std::cout  << "Could not open the depth output video for write: " << std::endl;

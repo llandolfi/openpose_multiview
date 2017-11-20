@@ -49,10 +49,12 @@ DEFINE_int32(udp_port,                  0,               "Stream body data point
 DEFINE_string(udp_address,              "127.0.0.1",      "Stream body data points in JSON format to defined port");
 
 
-PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution) : udpstreamer_(FLAGS_udp_port, FLAGS_udp_address)
+PoseExtractor::PoseExtractor(int argc, char **argv, const Camera & camera) : udpstreamer_(FLAGS_udp_port, FLAGS_udp_address)
 {
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  cam_ = camera; 
 
   inited_ = false;
   cur_frame_ = 0;
@@ -72,7 +74,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   const bool enableGoogleLogging = true;
   // Step 2 - Read Google flags (user defined configuration)
   // outputSize
-  const auto outputSize = op::flagsToPoint(resolution, "1280x720");
+  const auto outputSize = op::flagsToPoint(cam_.resolution, "1280x720");
   // netInputSize
   const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "640x480");
   // netOutputSize
@@ -89,10 +91,6 @@ PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution
   pose_params_.frameDisplayer_ = new op::FrameDisplayer{"OpenPose multiview", outputSize};
 }
 
-PoseExtractor::PoseExtractor(int argc, char **argv, const std::string resolution, int fps) : PoseExtractor(argc,argv,resolution)
-{
-  pcam_-> fps_ = fps;
-} 
 
 std::string StereoPoseExtractor::pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)
 {
@@ -194,24 +192,17 @@ void PoseExtractor::setDepth(const cv::Mat & m)
 }
 
 
-StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution), 
-                                            cam_(resolution)
+StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const Camera & cam) : PoseExtractor(argc, argv, cam)                              
 {  
-
+  cam_ = cam;
 }
-
-StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, const std::string resolution, int fps) : StereoPoseExtractor(argc,argv,resolution)
-{
-
-  cam_.fps_ = fps;
-} 
 
 
 void StereoPoseExtractor::prepareVideo(const std::string & path)
 {
   //TODO: parse resolution from instance fields
   cv::Size S = cv::Size(cam_.width_*2, cam_.height_);
-  outputVideo_.open(path, CV_FOURCC('P','I','M','1'), cam_.fps_, S, true);
+  outputVideo_.open(path, CV_FOURCC('D','I','V','X'), cam_.fps_, S, true);
   if (!outputVideo_.isOpened())
   {
       std::cout  << "Could not open the output video for write: " << std::endl;
@@ -254,7 +245,7 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   //remve the points with confidence less yhan a threshold
   filterUncertain(0.55, cam0pnts);
   filterUncertain(0.55, cam1pnts);
-  
+
 
   std::map<int,int> correspondences;
   findCorrespondences(cam0pnts, cam1pnts, cam0pnts, cam1pnts);

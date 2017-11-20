@@ -334,7 +334,6 @@ void splitVertically(const cv::Mat & input, cv::Mat & outputleft, cv::Mat & outp
   c += coloffset;
 
   outputright = input(cv::Range(r, std::min(r + rowoffset, input.rows)), cv::Range(c, std::min(c + coloffset, input.cols)));
-    
 }
 
 /*

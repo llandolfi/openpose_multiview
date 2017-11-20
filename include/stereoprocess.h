@@ -34,9 +34,7 @@ extern bool keep_on;
 
 struct PoseExtractor {
 
-	PoseExtractor(int argc, char **argv, const std::string resolution);
-
-	PoseExtractor(int argc, char **argv, const std::string resolution, int fps);
+	PoseExtractor(int argc, char **argv, const Camera & camera);
 
 	virtual double go(const ImageFrame & image, const bool verify, cv::Mat &, bool* keep_on);
 
@@ -79,7 +77,7 @@ struct PoseExtractor {
 
 	int cur_frame_;	
 
-	PinholeCamera * pcam_;
+	Camera & cam_;
 
 	cv::Mat depth_;
 
@@ -91,7 +89,7 @@ struct PoseExtractor {
 
 struct DepthExtractor : PoseExtractor {
 
-	DepthExtractor(int argc, char **argv, const std::string resolution = "640x480");
+	DepthExtractor(int argc, char **argv, const Camera & camera);
 
 	virtual double triangulate(cv::Mat &);
 
@@ -124,9 +122,7 @@ struct DepthExtractor : PoseExtractor {
 
 struct StereoPoseExtractor : PoseExtractor {
 
-	StereoPoseExtractor(int argc, char **argv, const std::string resolution);
-
-	StereoPoseExtractor(int argc, char **argv, const std::string resolution, int fps);
+	StereoPoseExtractor(int argc, char **argv, const Camera & camera);
 
 	void triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints);
 
@@ -157,15 +153,13 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	cv::Mat imageright_;
 
-	StereoCamera cam_;
-
 };
 
 struct DisparityExtractor : StereoPoseExtractor {
 
-	DisparityExtractor(int argc, char **argv, const std::string resolution);
+	DisparityExtractor(int argc, char **argv, const Camera & camera);
 
-	DisparityExtractor(int argc, char **argv, const std::string resolution, int fps);
+	DisparityExtractor(int argc, char **argv, const Camera & camera);
 
 	void getDisparity();
 
