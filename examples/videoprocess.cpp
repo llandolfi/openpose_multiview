@@ -61,7 +61,7 @@ bool to_stop = false;
 
 ChannelWrapper<ImageFrame> pc_camera(to_stop, 3);
 
-std::map<std::string, int> camera_map = {{"ZED",0},{"K1",1}};
+std::map<std::string, int> camera_map = {{"ZED",0},{"STEREO",1},{"K1",2},{"K2",3}};
 
   
 void process(PoseExtractor * pe, std::shared_ptr<PooledChannel<std::shared_ptr<ImageFrame>>> pcw)
@@ -307,26 +307,38 @@ int main(int argc, char **argv) {
 
   std::vector<std::thread> thread_list;
 
+  StereoCamera * scamera;
+  DepthCamera * dcamera = new DepthCamera();
+
   switch(camera_map[FLAGS_camera])
   {
     case 0: 
             std::cout << "Streaming from ZED" << std::endl;
+            scamera = new ZED(FLAGS_resolution);
+            scamera->fps_ = FLAGS_fps; 
 
             if(FLAGS_disparity == true)
             {
               std::cout << "Using disparity " << std::endl;
-              stereoextractor = new DisparityExtractor(argc, argv, FLAGS_resolution, FLAGS_fps);
+              stereoextractor = new DisparityExtractor(argc, argv, *scamera);
             }
             else
             {
               std::cout << "Using triangulation " << std::endl;
-              stereoextractor = new StereoPoseExtractor(argc, argv, FLAGS_resolution, FLAGS_fps);
+              stereoextractor = new StereoPoseExtractor(argc, argv, *scamera);
             }
             break;
-    case 1: 
+
+     case 1:
+            std::cout << "streaming from generic stereo camera " << std::endl;
+            scamera = new StereoCamera();
+            scamera->setParameters("../settings/stereocalib.json");
+            break;
+
+    case 2: 
             std::cout << "Streaming from Kinect 1" << std::endl;
             std::cout << "Using depht " << std::endl;
-            stereoextractor = new DepthExtractor(argc, argv);
+            stereoextractor = new DepthExtractor(argc, argv, *dcamera);
             break;
   }
 

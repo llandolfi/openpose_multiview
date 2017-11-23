@@ -52,7 +52,9 @@ int main(int argc, char **argv) {
 
   std::string res = std::to_string(S.width/2) + "x" + std::to_string(S.height);
 
-  PoseExtractor *stereoextractor = new PoseExtractorFromFile(argc, argv, res, FLAGS_file);
+  StereoCamera camera;
+
+  PoseExtractor *stereoextractor = new PoseExtractorFromFile(argc, argv, camera, FLAGS_file);
     
   stereoextractor->init();
 

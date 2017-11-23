@@ -21,17 +21,24 @@
 #include "utilities.hpp"
 #include <gflags/gflags.h> // DEFINE_bool, DEFINE_int32, DEFINE_int64, DEFINE_uint64, DEFINE_double, DEFINE_string
 #include <glog/logging.h> // google::InitGoogleLogging
+#include <json/json.h>
 
 struct Camera
 {
 	Camera(){}
 
+	Camera(const cv::Mat intrinsics, const cv::Mat & distortion, int width, int height) : width_(width), height_(height), 
+																						intrinsics_(intrinsics), dist_(distortion)
+	{}
+
 	int width_,height_;
 	int fps_;
 
-	std::string getResolution();
+	cv::Mat intrinsics_;
+	cv::Mat dist_;
 
-}
+	virtual std::string getResolution();
+};
 
 
 struct PinholeCamera : Camera { 
@@ -39,8 +46,7 @@ struct PinholeCamera : Camera {
 	PinholeCamera() {}
 	PinholeCamera(const std::string params_path);
 
-	cv::Mat intrinsics_;
-	cv::Mat dist_;
+	friend std::ostream& operator << (std::ostream& os, const PinholeCamera & pc);
 
 };
 
@@ -58,9 +64,11 @@ struct DepthCamera : PinholeCamera{
 
 struct StereoCamera : Camera {
 
+	StereoCamera(){}
 	StereoCamera(const std::string resolution);
 
 	void dump();
+	void setParameters(const std::string & paramfile);
 
 	std::string resolution_;
 
@@ -79,5 +87,10 @@ struct ZED : StereoCamera {
 
 	std::string resolution_code_;
 	std::string path_ = "../settings/SN1499.conf";	
+	std::string resolution_;
 
 };
+
+PinholeCamera parsecameraJSON(const Json::Value & root);
+
+

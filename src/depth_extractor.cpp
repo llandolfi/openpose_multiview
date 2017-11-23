@@ -7,10 +7,10 @@
 bool inited = false;
 
 
-DepthExtractor::DepthExtractor(int argc, char **argv, const std::string resolution) : PoseExtractor(argc, argv, resolution)
+DepthExtractor::DepthExtractor(int argc, char **argv, DepthCamera & camera) : PoseExtractor(argc, argv, camera)
 {
 
-  pcam_ = new DepthCamera();
+  cam_ = camera;
 
 }
 
@@ -69,10 +69,10 @@ cv::Point3d DepthExtractor::getPointFromDepth(double u, double v, double z)
     return cv::Point3d(0,0,0);
   }
 
-  double fx = pcam_->intrinsics_.at<double>(0,0);
-  double fy = pcam_->intrinsics_.at<double>(1,1);
-  double cx = pcam_->intrinsics_.at<double>(0,2);
-  double cy = pcam_->intrinsics_.at<double>(1,2);
+  double fx = cam_.intrinsics_.at<double>(0,0);
+  double fy = cam_.intrinsics_.at<double>(1,1);
+  double cx = cam_.intrinsics_.at<double>(0,2);
+  double cy = cam_.intrinsics_.at<double>(1,2);
 
   double Z = z;
   double X = ((v - cx) * Z)/fx;
@@ -91,7 +91,7 @@ double DepthExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D)
 
   cv::Mat points2D; 
 
-  cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
+  cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),cam_.intrinsics_,cv::Vec4d(0,0,0,0),points2D);
 
   cv::transpose(points2D,points2D);
 
@@ -335,7 +335,7 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
     std::vector<cv::Point2d> points2D(pnts.cols);
 
-    cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),pcam_->intrinsics_,cv::Vec4d(0,0,0,0),points2D);
+    cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),cam_.intrinsics_,cv::Vec4d(0,0,0,0),points2D);
 
     for (auto & c : points2D)
     { 

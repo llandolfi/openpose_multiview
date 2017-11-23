@@ -34,7 +34,7 @@ extern bool keep_on;
 
 struct PoseExtractor {
 
-	PoseExtractor(int argc, char **argv, const Camera & camera);
+	PoseExtractor(int argc, char **argv, Camera & camera);
 
 	virtual double go(const ImageFrame & image, const bool verify, cv::Mat &, bool* keep_on);
 
@@ -77,8 +77,6 @@ struct PoseExtractor {
 
 	int cur_frame_;	
 
-	Camera & cam_;
-
 	cv::Mat depth_;
 
 	bool live_ = true;
@@ -89,7 +87,7 @@ struct PoseExtractor {
 
 struct DepthExtractor : PoseExtractor {
 
-	DepthExtractor(int argc, char **argv, const Camera & camera);
+	DepthExtractor(int argc, char **argv, DepthCamera & camera);
 
 	virtual double triangulate(cv::Mat &);
 
@@ -117,12 +115,13 @@ struct DepthExtractor : PoseExtractor {
 
 	cv::VideoCapture depthcap_;
 
+	DepthCamera cam_;
 };
 
 
 struct StereoPoseExtractor : PoseExtractor {
 
-	StereoPoseExtractor(int argc, char **argv, const Camera & camera);
+	StereoPoseExtractor(int argc, char **argv, StereoCamera & camera);
 
 	void triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints);
 
@@ -153,13 +152,13 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	cv::Mat imageright_;
 
+	StereoCamera cam_;
+
 };
 
 struct DisparityExtractor : StereoPoseExtractor {
 
-	DisparityExtractor(int argc, char **argv, const Camera & camera);
-
-	DisparityExtractor(int argc, char **argv, const Camera & camera);
+	DisparityExtractor(int argc, char **argv, StereoCamera & camera);
 
 	void getDisparity();
 
@@ -201,7 +200,7 @@ struct DisparityExtractor : StereoPoseExtractor {
 
 struct PoseExtractorFromFile : StereoPoseExtractor {
 
-	PoseExtractorFromFile(int argc, char **argv, const std::string resolution, const std::string path);
+	PoseExtractorFromFile(int argc, char **argv, StereoCamera & camera, const std::string path);
                                       
 	virtual void visualize(bool * keep_on);
 
