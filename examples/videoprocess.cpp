@@ -165,14 +165,84 @@ void cb(uvc_frame_t *frame, void *ptr) {
   uvc_free_frame(bgr);
 }
 
+int start2ZedStream()
+{ 
+  /*use a videocapture and get keypoints from it. Assumes the video is a stereo video*/
+  cv::VideoCapture cap1(0);
+  cv::VideoCapture cap2;
+
+  if( !cap1.isOpened())
+  {
+    std::cout << "Could not read video file. Exiting." << std::endl;
+    return -1;
+  }
+
+  int id = 1;
+  bool open = false;
+
+  while(id < 5 && open == false)
+  {
+    cap2 = cv::VideoCapture(id);
+
+    if(!cap2.isOpened())
+    {
+      std::cout << "Trying with next ID " << std::endl;
+      id ++;
+      std::cout << id << std::endl;
+    }
+    else
+    {
+      open = true;
+    }
+  }
+
+  if(id > 4)
+  { 
+    std::cout << "No second camera could be found " << std::endl;
+    cap1.release();
+    cv::destroyAllWindows();
+    exit(-1);
+  }
+
+  cap1.set(CV_CAP_PROP_FRAME_WIDTH,1280*2);
+  cap1.set(CV_CAP_PROP_FRAME_HEIGHT,720);
+  cap2.set(CV_CAP_PROP_FRAME_WIDTH,1280*2);
+  cap2.set(CV_CAP_PROP_FRAME_HEIGHT,720);
+
+  std::cout << "videocaptures OK " << std::endl;
+
+  cv::Mat frame,frame1,frame2;
+  cv::Mat right;
+
+  while(keep_on)
+  {
+    cap1 >> frame1;
+    cap2 >> frame2;
+
+    splitVertically(frame1,frame1,right);
+    splitVertically(frame2,frame2,right);
+
+    cv::hconcat(frame1,frame2,frame);  
+
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()); 
+    std::shared_ptr<ImageFrame> imageframe = std::make_shared<ImageFrame>();
+
+    imageframe->color_ = frame;
+    imageframe->time_stamp_ = time;
+
+    pc_camera.write(imageframe);
+    
+  }
+}
+
 int startZedStream()
 { 
- 
+
   uvc_context_t *ctx;
   uvc_device_t *dev;
   uvc_device_handle_t *devh;
   uvc_stream_ctrl_t ctrl;
-  uvc_error_t res;
+  uvc_error_t res;  
 
   /* Initialize a UVC service context. Libuvc will set up its own libusb
    * context. Replace NULL with a libusb_context pointer to run libuvc
@@ -329,10 +399,23 @@ int main(int argc, char **argv) {
             }
             break;
 
-     case 1:
+    case 1:
             std::cout << "streaming from generic stereo camera " << std::endl;
             scamera = new StereoCamera();
             scamera->setParameters("../settings/stereocalib.json");
+            scamera->fps_ = FLAGS_fps; 
+
+             if(FLAGS_disparity == true)
+            {
+              std::cout << "Using disparity " << std::endl;
+              stereoextractor = new DisparityExtractor(argc, argv, *scamera);
+            }
+            else
+            {
+              std::cout << "Using triangulation " << std::endl;
+              stereoextractor = new StereoPoseExtractor(argc, argv, *scamera);
+            }
+
             break;
 
     case 2: 
@@ -363,6 +446,11 @@ int main(int argc, char **argv) {
               break;
 
       case 1: 
+              //producer = new std::thread(startZedStream);
+              start2ZedStream();
+              break;
+
+      case 2: 
               //producer = new std::thread(startK1Stream);
               startK1Stream();
               break;

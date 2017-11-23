@@ -165,7 +165,7 @@ PinholeCamera parsecameraJSON(const Json::Value & root)
   double d1 = dist[0].asDouble();
   double d2 = dist[1].asDouble();
 
-  mycam.dist_ = (cv::Mat_<double>(1,6) << d1, d2, 0.0, 0.0, 0.0, 0.0);
+  mycam.dist_ = (cv::Mat_<double>(1,4) << d1, d2, 0.0, 0.0);
 
   mycam.height_ = imagesize[0].asInt();
   mycam.width_ = imagesize[1].asInt();

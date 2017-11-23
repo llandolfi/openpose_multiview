@@ -244,7 +244,6 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   filterUncertain(0.35, cam0pnts);
   filterUncertain(0.35, cam1pnts);
 
-
   std::map<int,int> correspondences;
   findCorrespondences(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
 
