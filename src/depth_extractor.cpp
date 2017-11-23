@@ -142,11 +142,11 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
                         //(double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
-                        Pool(depth_, keypoint.y, keypoint.x, 5, AvgPool));
+                        Pool(depth_, keypoint.y, keypoint.x, 3, AvgPool));
 
     uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
 
-    if(ddepth > 0 && point.x != 0.0 && point.y != 0.0 && confidence > 0.4)
+    if(ddepth > 0 && point.x != 0.0 && point.y != 0.0 && confidence > 0.2)
     {
       point = point / 1000;
       points3D.push_back(point);
@@ -237,6 +237,19 @@ void DepthExtractor::appendFrame(const ImageFrame & myframe)
  depthoutput_ << depthtosave;  
 
  timefile_ << std::to_string(myframe.time_stamp_.count()) << "\n";
+}
+
+
+void DepthExtractor::prepareOutputVideo(const std::string & path)
+{
+  //TODO: parse resolution from instance fields
+  cv::Size S = cv::Size(640, 480);
+  poseVideo_.open(path, CV_FOURCC('D','I','V','X'), 10, S, true);
+  if (!poseVideo_.isOpened())
+  {
+      std::cout  << "Could not open the output video for write: " << std::endl;
+      exit(-1);
+  }
 }
 
 void DepthExtractor::prepareVideo(const std::string & path)
@@ -342,6 +355,11 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
       cv::circle(verification,c,5,cv::Scalar(255,0,0),5);
     }
 
+  }
+
+  if(videooutput_)
+  {
+    poseVideo_ << verification;
   }
 
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);

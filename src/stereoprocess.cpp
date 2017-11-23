@@ -211,6 +211,19 @@ void StereoPoseExtractor::prepareVideo(const std::string & path)
   jsonfile_.open(path + ".json"); 
 }
 
+void StereoPoseExtractor::prepareOutputVideo(const std::string & path)
+{
+  //TODO: parse resolution from instance fields
+  cv::Size S = cv::Size(cam_.width_, cam_.height_);
+  poseVideo_.open(path, CV_FOURCC('D','I','V','X'), 10, S, true);
+  if (!poseVideo_.isOpened())
+  {
+      std::cout  << "Could not open the output video for write: " << std::endl;
+      exit(-1);
+  }
+}
+
+
 void filterUncertain(const double thresh, cv::Mat & input)
 { 
 
@@ -453,6 +466,12 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
         cv::circle(verification,points2D[i],6,cv::Scalar(255,0,0),5);
       }
     }
+  } 
+
+  if(videooutput_)
+  {
+    std::cout << "writeing video " << std::endl;
+    poseVideo_ << verification;
   }
 
   cv::imshow("Verification", verification);

@@ -52,6 +52,8 @@ struct PoseExtractor {
 
 	virtual void prepareVideo(const std::string & path)=0;
 
+	virtual void prepareOutputVideo(const std::string & path)=0;
+
 	virtual std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)=0;
 
 	virtual void setDepth(const cv::Mat & m);
@@ -70,6 +72,7 @@ struct PoseExtractor {
 	bool inited_;
 
 	cv::VideoWriter outputVideo_; 
+	cv::VideoWriter poseVideo_;
 	std::ofstream outputfile_; 
 
 	std::ofstream timefile_;  
@@ -80,6 +83,8 @@ struct PoseExtractor {
 	cv::Mat depth_;
 
 	bool live_ = true;
+	bool videooutput_ = false;
+
 	std::string videoname_ = "";
 
 	UDPStreamer udpstreamer_;
@@ -100,6 +105,8 @@ struct DepthExtractor : PoseExtractor {
 	virtual void verify(const cv::Mat & pnts, bool* keep_on);
 
 	virtual void prepareVideo(const std::string & path);
+
+	virtual void prepareOutputVideo(const std::string & path);
 
 	double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D);
 
@@ -144,6 +151,8 @@ struct StereoPoseExtractor : PoseExtractor {
 	virtual void verify(const cv::Mat & pnts, bool* keep_on);
 
 	virtual void prepareVideo(const std::string & path);
+
+	virtual void prepareOutputVideo(const std::string & path);
 
 	virtual double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D, bool left = true);
 

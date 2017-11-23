@@ -49,7 +49,9 @@ DEFINE_string(resolution,               "1280x720",     "The image resolution (d
 
 DEFINE_string(camera,                   "ZED",          "The camera used for streaming (ZED,K1)");  
 
-DEFINE_string(write_video,              "",             "Full file path to write rendered frames in motion JPEG video format.");
+DEFINE_string(write_video,              "",             "Full file path to write input stream from camera.");
+
+DEFINE_string(write_output_video,        "",             "Full file path to write rendered frames in motion JPEG video format.");
 
 DEFINE_int32(skip,                       0,             "Number of frame to skip when processing video");
 
@@ -436,6 +438,12 @@ int main(int argc, char **argv) {
     if(FLAGS_write_video != "")
     {
       thread_list.push_back(std::thread(saveVideo, stereoextractor, pc_camera.getNewChannel(true, false)));
+    }
+
+    if(FLAGS_write_output_video != "")
+    {
+      stereoextractor->videooutput_ = true;
+      stereoextractor->prepareOutputVideo(FLAGS_write_output_video);
     }
 
     switch(camera_map[FLAGS_camera])
