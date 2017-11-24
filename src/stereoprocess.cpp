@@ -99,12 +99,24 @@ std::string StereoPoseExtractor::pnts2JSON(const cv::Mat & pnts, int frame, cons
 
   for(int i = 0; i < pnts.cols; i++)
   { 
-    cv::Vec3d point = pnts.at<cv::Vec3d>(0,i);
-    Json::Value jpoint;
-    jpoint["x"] = -point[0];
-    jpoint["y"] = -point[1];
-    jpoint["z"] = point[2];
-    points.append(jpoint);
+    if( i < 14)
+    {
+      cv::Vec3d point = pnts.at<cv::Vec3d>(0,i);
+      Json::Value jpoint;
+      jpoint["x"] = -point[0];
+      jpoint["y"] = -point[1];
+      jpoint["z"] = point[2];
+      points.append(jpoint);
+    }
+    else
+    {
+      double n = std::numeric_limits<double>::quiet_NaN();
+      Json::Value jpoint;
+      jpoint["x"] = n;
+      jpoint["y"] = n;
+      jpoint["z"] = n;
+      points.append(jpoint);
+    }
   }
 
   
@@ -254,8 +266,8 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   }
 
   //remve the points with confidence less yhan a threshold
-  filterUncertain(0.35, cam0pnts);
-  filterUncertain(0.35, cam1pnts);
+  filterUncertain(0.30, cam0pnts);
+  filterUncertain(0.30, cam1pnts);
 
   std::map<int,int> correspondences;
   findCorrespondences(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
@@ -297,7 +309,7 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
 
 
   cv::Mat rototran;
-  cv::hconcat(cv::Mat::eye(3,3,CV_64FC1), cam_.ST_, rototran);
+  cv::hconcat(cam_.SR_, cam_.ST_, rototran);
 
   proj_right = cam_.camera_left_.intrinsics_ * rototran;
 
@@ -308,8 +320,20 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   for (int i = 0; i < N; i++)
   { 
     cv::Vec4d cur = pnts3d.col(i);
+
+    //TODO: check for negative Z and investigate
     cv::Vec3d p3d(cur[0]/cur[3], cur[1]/cur[3],cur[2]/cur[3]);
+
+    if(p3d[2] <= 0.0)
+    {
+      double n = std::numeric_limits<double>::quiet_NaN();
+      finalpoints.at<cv::Vec3d>(0,i) = cv::Vec3d(n,n,n);
+    }
+    else
+    {
     finalpoints.at<cv::Vec3d>(0,i) = p3d;
+    }
+
   }
 }
 
@@ -446,7 +470,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
     std::vector<cv::Point2d> points2D(pnts.cols);
 
-    cv::projectPoints(pnts,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(cam_.ST_[0],0,0),cam_.camera_right_.intrinsics_,cam_.camera_right_.dist_,points2D);
+    cv::projectPoints(pnts,cam_.SR_,cam_.ST_,cam_.camera_right_.intrinsics_,cam_.camera_right_.dist_,points2D);
 
     int inside = 0;
 
