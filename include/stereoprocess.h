@@ -161,7 +161,7 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	cv::Mat imageright_;
 
-	StereoCamera cam_;
+	StereoCamera * cam_;
 
 };
 

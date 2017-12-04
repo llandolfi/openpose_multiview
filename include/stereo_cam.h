@@ -38,6 +38,7 @@ struct Camera
 	cv::Mat dist_;
 
 	virtual std::string getResolution();
+	virtual void JSONPoints(const cv::Mat & pnts,Json::Value & points) = 0;
 };
 
 
@@ -45,6 +46,8 @@ struct PinholeCamera : Camera {
 
 	PinholeCamera() {}
 	PinholeCamera(const std::string params_path);
+
+	virtual void JSONPoints(const cv::Mat & pnts,Json::Value & points);
 
 	friend std::ostream& operator << (std::ostream& os, const PinholeCamera & pc);
 
@@ -69,6 +72,7 @@ struct StereoCamera : Camera {
 
 	void dump();
 	void setParameters(const std::string & paramfile);
+	virtual void JSONPoints(const cv::Mat & pnts,Json::Value & points);
 
 	std::string resolution_;
 
@@ -84,6 +88,9 @@ struct StereoCamera : Camera {
 struct ZED : StereoCamera {
 
 	ZED(const std::string resolution);
+
+	int getZEDfps();
+	void JSONPoints(const cv::Mat & pnts,Json::Value & points);
 
 	std::string resolution_code_;
 	std::string path_ = "../settings/SN1499.conf";	

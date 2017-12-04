@@ -25,7 +25,7 @@ std::string DepthExtractor::pnts2JSON(const cv::Mat & pnts, int frame, const std
   { 
     cv::Vec3d point = pnts.at<cv::Vec3d>(0,i);
     Json::Value jpoint;
-    jpoint["x"] = -point[0];
+    jpoint["x"] = point[0];
     jpoint["y"] = -point[1];
     jpoint["z"] = point[2];
     points.append(jpoint);

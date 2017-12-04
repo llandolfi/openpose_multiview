@@ -29,6 +29,10 @@
 #include "channel_wrapper.hpp"
 #include <thread>
 #include "image_frame.hpp"
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <libv4l1-videodev.h>
+#include<cv.h>
 
 /*g++ ./src/stereocam.cpp  -lopenpose -DUSE_CAFFE -lopencv_core -lopencv_highgui -I /usr/local/cuda-8.0/include/ -L /usr/local/cuda-8.0/lib64  -lcudart -lcublas -lcurand -L /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/lib/  -I /home/lando/projects/openpose_stereo/openpose/3rdparty/caffe/distribute/include/ -lcaffe -DUSE_CUDNN  -std=c++11 -pthread -fPIC -fopenmp -O3 -lcudnn -lglog -lgflags -lboost_system -lboost_filesystem -lm -lboost_thread -luvc  -o prova.a
 */
@@ -167,8 +171,10 @@ void cb(uvc_frame_t *frame, void *ptr) {
   uvc_free_frame(bgr);
 }
 
+
 int start2ZedStream()
 { 
+
   /*use a videocapture and get keypoints from it. Assumes the video is a stereo video*/
   cv::VideoCapture cap1(0);
   cv::VideoCapture cap2;
@@ -181,16 +187,25 @@ int start2ZedStream()
 
   int id = 1;
   bool open = false;
+  bool noerror = true;
 
   while(id < 5 && open == false)
-  {
-    cap2 = cv::VideoCapture(id);
+  { 
+    try
+    {
+      cap2 = cv::VideoCapture(id);
+    }
+    catch(...)
+    {
+      noerror = false;
+    }
 
-    if(!cap2.isOpened())
+    if(!cap2.isOpened() || noerror == false)
     {
       std::cout << "Trying with next ID " << std::endl;
       id ++;
       std::cout << id << std::endl;
+      noerror = true;
     }
     else
     {
@@ -206,10 +221,10 @@ int start2ZedStream()
     exit(-1);
   }
 
-  cap1.set(CV_CAP_PROP_FRAME_WIDTH,1280*2);
-  cap1.set(CV_CAP_PROP_FRAME_HEIGHT,720);
-  cap2.set(CV_CAP_PROP_FRAME_WIDTH,1280*2);
-  cap2.set(CV_CAP_PROP_FRAME_HEIGHT,720);
+  cap1.set(CV_CAP_PROP_FRAME_WIDTH,getWidth(FLAGS_resolution)*2);
+  cap1.set(CV_CAP_PROP_FRAME_HEIGHT,getHeight(FLAGS_resolution));
+  cap2.set(CV_CAP_PROP_FRAME_WIDTH,getWidth(FLAGS_resolution)*2*2);
+  cap2.set(CV_CAP_PROP_FRAME_HEIGHT,getHeight(FLAGS_resolution));
 
   std::cout << "videocaptures OK " << std::endl;
 
@@ -237,7 +252,7 @@ int start2ZedStream()
   }
 }
 
-int startZedStream()
+int startZedStream(Camera & zed)
 { 
 
   uvc_context_t *ctx;
@@ -285,7 +300,7 @@ int startZedStream()
           devh, &ctrl, /* result stored in ctrl */
           UVC_FRAME_FORMAT_YUYV, /* YUV 422, aka YUV 4:2:2. try _COMPRESSED */
           //1344, 376, 100
-          getWidth(FLAGS_resolution) * 2, getHeight(FLAGS_resolution), FLAGS_fps /* width, height, fps */
+          zed.width_* 2,zed.height_, zed.fps_ /* width, height, fps */
       );
 
       /* Print out the result */
@@ -450,7 +465,7 @@ int main(int argc, char **argv) {
     {
       case 0: 
               //producer = new std::thread(startZedStream);
-              startZedStream();
+              startZedStream(*scamera);
               break;
 
       case 1: 

@@ -9,10 +9,10 @@ std::string DisparityExtractor::pnts2JSON(const cv::Mat & pnts, int frame, const
 
 DisparityExtractor::DisparityExtractor(int argc, char **argv, StereoCamera & camera) : StereoPoseExtractor(argc,argv,camera){
 
-  double f = cam_.camera_left_.intrinsics_.at<double>(0,0);
-  double cx = cam_.camera_left_.intrinsics_.at<double>(0,2);
-  double cy = cam_.camera_left_.intrinsics_.at<double>(1,2);
-  double B = cam_.ST_[0];
+  double f = cam_->camera_left_.intrinsics_.at<double>(0,0);
+  double cx = cam_->camera_left_.intrinsics_.at<double>(0,2);
+  double cy = cam_->camera_left_.intrinsics_.at<double>(1,2);
+  double B = cam_->ST_[0];
 
   //TODO: build the Q matrix
   cv::Mat K4 = (cv::Mat_<double>(4,4) << f, 0.0, 0.0, cx, 0.0, f, 0.0, cy, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0);
@@ -23,9 +23,9 @@ DisparityExtractor::DisparityExtractor(int argc, char **argv, StereoCamera & cam
   iP_ = P_.inv();
 
     cv::Mat R1,R2,P1,P2;
-    cv::Size img_size = cv::Size(cam_.width_,cam_.height_);
+    cv::Size img_size = cv::Size(cam_->width_,cam_->height_);
 
-    cv::stereoRectify(cam_.camera_left_.intrinsics_,cam_.camera_left_.dist_,cam_.camera_right_.intrinsics_,cam_.camera_right_.dist_,img_size, cam_.SR_, cam_.ST_,
+    cv::stereoRectify(cam_->camera_left_.intrinsics_,cam_->camera_left_.dist_,cam_->camera_right_.intrinsics_,cam_->camera_right_.dist_,img_size, cam_->SR_, cam_->ST_,
                       R1,R2,P1,P2,Q_, cv::CALIB_ZERO_DISPARITY, -1,img_size ,&roi1_, &roi2_);
 
 }
@@ -54,10 +54,10 @@ void DisparityExtractor::getDisparity()
 cv::Point3d DisparityExtractor::getPointFromDisp(double u, double v, double d)
 {
 
-  double f = cam_.camera_left_.intrinsics_.at<double>(0,0);
-  double cx = cam_.camera_left_.intrinsics_.at<double>(0,2);
-  double cy = cam_.camera_left_.intrinsics_.at<double>(1,2);
-  double b = -cam_.ST_[0];
+  double f = cam_->camera_left_.intrinsics_.at<double>(0,0);
+  double cx = cam_->camera_left_.intrinsics_.at<double>(0,2);
+  double cy = cam_->camera_left_.intrinsics_.at<double>(1,2);
+  double b = -cam_->ST_[0];
 
   double Z = (f * b)/d;
   double X = ((u - cx) * Z)/f;
@@ -94,8 +94,8 @@ double DisparityExtractor::maxDisp(const cv::Mat & disp, int u, int v, int side)
   wlb = std::max(0,u - side);
   hlb = std::max(0,v - side);
 
-  wub = std::min(cam_.width_, u + side + 1);
-  hub = std::min(cam_.height_,v + side + 1);
+  wub = std::min(cam_->width_, u + side + 1);
+  hub = std::min(cam_->height_,v + side + 1);
 
   cv::Mat matrix(disp(cv::Rect(wlb,hlb,side,side)));
 
@@ -190,8 +190,8 @@ void DisparityExtractor::extract(const ImageFrame & image)
   //cv::remap(imageleft_, left_undist, map11_, map12_, cv::INTER_LINEAR);
   //cv::remap(imageright_, right_undist, map21_, map22_, cv::INTER_LINEAR);
 
-  cv::undistort(imageleft_, left_undist, cam_.camera_left_.intrinsics_, cam_.camera_left_.dist_);
-  cv::undistort(imageright_, right_undist, cam_.camera_right_.intrinsics_, cam_.camera_right_.dist_);
+  cv::undistort(imageleft_, left_undist, cam_->camera_left_.intrinsics_, cam_->camera_left_.dist_);
+  cv::undistort(imageright_, right_undist, cam_->camera_right_.intrinsics_, cam_->camera_right_.dist_);
 
   imageleft_ = left_undist;
   imageright_ = right_undist;

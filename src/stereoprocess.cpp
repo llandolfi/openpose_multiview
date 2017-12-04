@@ -97,28 +97,9 @@ std::string StereoPoseExtractor::pnts2JSON(const cv::Mat & pnts, int frame, cons
   Json::Value colors;
 
 
-  for(int i = 0; i < pnts.cols; i++)
-  { 
-    if( i < 14)
-    {
-      cv::Vec3d point = pnts.at<cv::Vec3d>(0,i);
-      Json::Value jpoint;
-      jpoint["x"] = -point[0];
-      jpoint["y"] = -point[1];
-      jpoint["z"] = point[2];
-      points.append(jpoint);
-    }
-    else
-    {
-      double n = std::numeric_limits<double>::quiet_NaN();
-      Json::Value jpoint;
-      jpoint["x"] = n;
-      jpoint["y"] = n;
-      jpoint["z"] = n;
-      points.append(jpoint);
-    }
-  }
+  std::cout << "Sending " << pnts.cols << " points " << std::endl;
 
+  cam_->JSONPoints(pnts,points);
   
   colors["r"] = 1.0;
   colors["g"] = 0;
@@ -155,6 +136,7 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   process(FLAGS_write_keypoint, FLAGS_visualize);
 
   error = triangulate(points3D);
+
 
   if(FLAGS_udp_port != 0)
   {
@@ -204,15 +186,15 @@ void PoseExtractor::setDepth(const cv::Mat & m)
 
 StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, StereoCamera & cam) : PoseExtractor(argc, argv, cam)                              
 {  
-  cam_ = cam;
+  cam_ = &(cam);
 }
 
 
 void StereoPoseExtractor::prepareVideo(const std::string & path)
 {
   //TODO: parse resolution from instance fields
-  cv::Size S = cv::Size(cam_.width_*2, cam_.height_);
-  outputVideo_.open(path, CV_FOURCC('D','I','V','X'), cam_.fps_, S, true);
+  cv::Size S = cv::Size(cam_->width_*2, cam_->height_);
+  outputVideo_.open(path, CV_FOURCC('D','I','V','X'), cam_->fps_, S, true);
   if (!outputVideo_.isOpened())
   {
       std::cout  << "Could not open the output video for write: " << std::endl;
@@ -226,7 +208,7 @@ void StereoPoseExtractor::prepareVideo(const std::string & path)
 void StereoPoseExtractor::prepareOutputVideo(const std::string & path)
 {
   //TODO: parse resolution from instance fields
-  cv::Size S = cv::Size(cam_.width_, cam_.height_);
+  cv::Size S = cv::Size(cam_->width_, cam_->height_);
   poseVideo_.open(path, CV_FOURCC('D','I','V','X'), 10, S, true);
   if (!poseVideo_.isOpened())
   {
@@ -255,6 +237,7 @@ void filterUncertain(const double thresh, cv::Mat & input)
 //N.B. cam0pnts holds also confidence
 void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts, cv::Mat & finalpoints)
 { 
+
   int N = 0;
   cv::Mat cam0pnts_undist;
   cv::Mat cam1pnts_undist;
@@ -266,8 +249,8 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   }
 
   //remve the points with confidence less yhan a threshold
-  filterUncertain(0.30, cam0pnts);
-  filterUncertain(0.30, cam1pnts);
+  filterUncertain(0.40, cam0pnts);
+  filterUncertain(0.40, cam1pnts);
 
   std::map<int,int> correspondences;
   findCorrespondences(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
@@ -284,10 +267,10 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
 
   cv::Mat R1,R2,P1,P2,Q;
   /*Computes rectification transforms for each head of a calibrated stereo camera*/
-  //cv::stereoRectify(cam_.camera_left_.intrinsics_, cam_.camera_left.dist_, cam_.camera_right_intrinsics_, cam_.camera_right_.dist_, cv::Size(cam_.width_,cam_.height_), cam_.SR_,cam_.ST_, R1, R2, P1, P2, Q);
+  //cv::stereoRectify(cam_->camera_left_.intrinsics_, cam_->camera_left.dist_, cam_->camera_right_intrinsics_, cam_->camera_right_.dist_, cv::Size(cam_->width_,cam_->height_), cam_->SR_,cam_->ST_, R1, R2, P1, P2, Q);
 
-  cv::undistortPoints(cam0pnts, cam0pnts_undist, cam_.camera_left_.intrinsics_, cam_.camera_left_.dist_, cam_.camera_left_.intrinsics_);
-  cv::undistortPoints(cam1pnts, cam1pnts_undist, cam_.camera_right_.intrinsics_, cam_.camera_right_.dist_, cam_.camera_right_.intrinsics_);
+  cv::undistortPoints(cam0pnts, cam0pnts_undist, cam_->camera_left_.intrinsics_, cam_->camera_left_.dist_, cam_->camera_left_.intrinsics_);
+  cv::undistortPoints(cam1pnts, cam1pnts_undist, cam_->camera_right_.intrinsics_, cam_->camera_right_.dist_, cam_->camera_right_.intrinsics_);
 
   cv::Mat proj_left,proj_right;
 
@@ -298,7 +281,7 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   {
     for ( int j = 0; j < 3; j++)
     {
-      proj_left.at<double>(i,j) = cam_.camera_left_.intrinsics_.at<double>(i,j);
+      proj_left.at<double>(i,j) = cam_->camera_left_.intrinsics_.at<double>(i,j);
     }
   }
 
@@ -309,9 +292,9 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
 
 
   cv::Mat rototran;
-  cv::hconcat(cam_.SR_, cam_.ST_, rototran);
+  cv::hconcat(cam_->SR_, cam_->ST_, rototran);
 
-  proj_right = cam_.camera_left_.intrinsics_ * rototran;
+  proj_right = cam_->camera_left_.intrinsics_ * rototran;
 
   cv::triangulatePoints(proj_left, proj_right, cam0pnts_undist, cam1pnts_undist, pnts3d);
 
@@ -324,8 +307,9 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
     //TODO: check for negative Z and investigate
     cv::Vec3d p3d(cur[0]/cur[3], cur[1]/cur[3],cur[2]/cur[3]);
 
-    if(p3d[2] <= 0.0)
+    if(false)
     {
+      std::cout << "Negative Z in " << i << std::endl;
       double n = std::numeric_limits<double>::quiet_NaN();
       finalpoints.at<cv::Vec3d>(0,i) = cv::Vec3d(n,n,n);
     }
@@ -336,6 +320,8 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
 
   }
 }
+
+//TODO: compare the movement of the projection with the one of the 3D points. Smooth it in case too much difference
 
 
 void StereoPoseExtractor::extract(const ImageFrame & image)
@@ -470,14 +456,14 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
     std::vector<cv::Point2d> points2D(pnts.cols);
 
-    cv::projectPoints(pnts,cam_.SR_,cam_.ST_,cam_.camera_right_.intrinsics_,cam_.camera_right_.dist_,points2D);
+    cv::projectPoints(pnts,cam_->SR_,cam_->ST_,cam_->camera_right_.intrinsics_,cam_->camera_right_.dist_,points2D);
 
     int inside = 0;
 
     for (unsigned int i = 0; i < pnts.cols; i++)
     {
 
-      if(points2D[i].x < cam_.width_ && points2D[i].y < cam_.height_&& points2D[i].x > 0 && points2D[i].y > 0)
+      if(points2D[i].x < cam_->width_ && points2D[i].y < cam_->height_&& points2D[i].x > 0 && points2D[i].y > 0)
       {
         inside ++;
       }
@@ -494,7 +480,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
   if(videooutput_)
   {
-    std::cout << "writeing video " << std::endl;
+    std::cout << "writing video " << std::endl;
     poseVideo_ << verification;
   }
 
@@ -526,11 +512,11 @@ double StereoPoseExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnt
 
   if(left)
   {
-    cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),cam_.camera_left_.intrinsics_,cam_.camera_left_.dist_,points2D);
+    cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(0,0,0),cam_->camera_left_.intrinsics_,cam_->camera_left_.dist_,points2D);
   }
   else
   {
-    cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(cam_.ST_[0],0,0),cam_.camera_right_.intrinsics_,cam_.camera_right_.dist_,points2D);
+    cv::projectPoints(pnts3D,cv::Mat::eye(3,3,CV_64FC1),cv::Vec3d(cam_->ST_[0],0,0),cam_->camera_right_.intrinsics_,cam_->camera_right_.dist_,points2D);
   }
 
 
