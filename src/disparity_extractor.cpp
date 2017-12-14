@@ -106,7 +106,6 @@ double DisparityExtractor::maxDisp(const cv::Mat & disp, int u, int v, int side)
 
 double DisparityExtractor::triangulate(cv::Mat & output) 
 {
-
   getDisparity();
 
   cv::Mat disp,disp8;
@@ -115,7 +114,7 @@ double DisparityExtractor::triangulate(cv::Mat & output)
 
   disparity_.download(disp);  
   getPoints(cam0pnts,cam1pnts);
-  filterVisible(cam0pnts,cam1pnts,cam0pnts,cam1pnts);
+  //filterVisible(cam0pnts,cam1pnts,cam0pnts,cam1pnts);
 
   disp.convertTo(disp8, CV_8U, 255/(disparter_->getNumDisparities()*16.));
 
@@ -125,14 +124,23 @@ double DisparityExtractor::triangulate(cv::Mat & output)
   {
 
     cv::Vec2d p = cam0pnts.at<cv::Vec2d>(0,i);
-    //disparity at the considered pixel 
-    double dispatpoint = (double)disp.at<uint16_t>(cvRound(p[0]),cvRound(p[1]));
-    //disparity in the neighbouroud
-    double disparity_point = maxDisp(disp,cvRound(p[0]),cvRound(p[1]),4);
 
-    cv::Point3d p3 = getPointFromDisp(p[0],p[1],disparity_point);
+    if(p[0] > 0)
+    {
+      //disparity at the considered pixel 
+      double dispatpoint = (double)disp.at<uint16_t>(cvRound(p[0]),cvRound(p[1]));
+      double disparity_point = dispatpoint;
+      //disparity in the neighbouroud
+      //double disparity_point = maxDisp(disp,cvRound(p[0]),cvRound(p[1]),4);
 
-    output.at<cv::Point3d>(0,i) = p3;
+      cv::Point3d p3 = getPointFromDisp(cvRound(p[0]),cvRound(p[1]),disparity_point);
+      output.at<cv::Point3d>(0,i) = p3;
+    }
+    else
+    {
+      double n = std::numeric_limits<double>::quiet_NaN();
+      output.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,1.0/0.0);
+    }
   }
 
   std::vector<cv::Point3d> output_nInf;
@@ -152,6 +160,9 @@ double DisparityExtractor::triangulate(cv::Mat & output)
   }
 
   output = cv::Mat(output_nInf);
+
+  std::cout << "final output " << output << std::endl;
+
   cam1pnts = cv::Mat(cam1pnts_nInf);
 
   cv::transpose(output, output);

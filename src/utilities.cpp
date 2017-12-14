@@ -311,8 +311,9 @@ std::string type2str(int type) {
 void drawPoints(const cv::Mat & points, cv::Mat & image)
 {
   for(int i = 0; i < points.cols; i++)
-  {
-    cv::Point2d c = points.at<cv::Point2d>(0,i);
+  { 
+    cv::Point3d d = points.at<cv::Point3d>(0,i);
+    cv::Point2d c = cv::Point2d(d.x,d.y);
     cv::circle(image,c,4,cv::Scalar(255,0,0),2);
   }
 }
