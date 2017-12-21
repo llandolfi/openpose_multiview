@@ -128,17 +128,24 @@ double DisparityExtractor::triangulate(cv::Mat & output)
     if(p[0] > 0)
     {
       //disparity at the considered pixel 
-      double dispatpoint = (double)disp.at<uint16_t>(cvRound(p[0]),cvRound(p[1]));
+      double dispatpoint = (double)disp8.at<uint8_t>(cvRound(p[0]),cvRound(p[1]));
+
+      if (dispatpoint > 0)
+        std::cout << "dispatpoint " << dispatpoint << std::endl;
+
       double disparity_point = dispatpoint;
       //disparity in the neighbouroud
       //double disparity_point = maxDisp(disp,cvRound(p[0]),cvRound(p[1]),4);
 
       cv::Point3d p3 = getPointFromDisp(cvRound(p[0]),cvRound(p[1]),disparity_point);
+
+      if (dispatpoint > 0)
+        std::cout << p3.z << std::endl;
+
       output.at<cv::Point3d>(0,i) = p3;
     }
     else
     {
-      double n = std::numeric_limits<double>::quiet_NaN();
       output.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,1.0/0.0);
     }
   }
@@ -160,8 +167,6 @@ double DisparityExtractor::triangulate(cv::Mat & output)
   }
 
   output = cv::Mat(output_nInf);
-
-  std::cout << "final output " << output << std::endl;
 
   cam1pnts = cv::Mat(cam1pnts_nInf);
 
@@ -221,7 +226,7 @@ void DisparityExtractor::visualize(bool * keep_on)
 
   disparity_.download(disp); 
 
-  //disp.convertTo(disp8, CV_8U, 255/(disparter_->getNumDisparities()*16.));
+  disp.convertTo(disp8, CV_8U, 255/(disparter_->getNumDisparities()*16.));
 
   getPoints(pnts_left, pnts_right);
 

@@ -79,6 +79,7 @@ struct PoseExtractor {
 	std::ofstream jsonfile_;
 
 	int cur_frame_;	
+	int skip_ = 0;
 
 	cv::Mat depth_;
 
@@ -92,7 +93,7 @@ struct PoseExtractor {
 
 struct DepthExtractor : PoseExtractor {
 
-	DepthExtractor(int argc, char **argv, DepthCamera & camera);
+	DepthExtractor(int argc, char **argv, DepthCamera & camera, const std::string & depth_video);
 
 	virtual double triangulate(cv::Mat &);
 
@@ -121,6 +122,8 @@ struct DepthExtractor : PoseExtractor {
 	cv::VideoWriter depthoutput_; 
 
 	cv::VideoCapture depthcap_;
+	
+	std::string depthpath_;
 
 	DepthCamera cam_;
 };

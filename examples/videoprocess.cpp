@@ -59,6 +59,8 @@ DEFINE_string(write_output_video,        "",             "Full file path to writ
 
 DEFINE_int32(skip,                       0,             "Number of frame to skip when processing video");
 
+DEFINE_string(depth_video,              "",      "Path of the depth video file");
+
 
 PoseExtractor * stereoextractor;
 bool keep_on = true;
@@ -438,7 +440,7 @@ int main(int argc, char **argv) {
     case 2: 
             std::cout << "Streaming from Kinect 1" << std::endl;
             std::cout << "Using depht " << std::endl;
-            stereoextractor = new DepthExtractor(argc, argv, *dcamera);
+            stereoextractor = new DepthExtractor(argc, argv, *dcamera, FLAGS_depth_video);
             break;
   }
 
@@ -486,28 +488,52 @@ int main(int argc, char **argv) {
   else
   {
 
+    cv::Mat pnts;
+    ImageFrame image;
+    uint64_t myframe = 0;
+    int skip = FLAGS_skip + 1;
+
     stereoextractor->live_ = false;
+    stereoextractor->skip_ = FLAGS_skip;
     stereoextractor->videoname_ = FLAGS_video;
 
     /*use a videocapture and get keypoints from it. Assumes the video is a stereo video*/
     cv::VideoCapture cap(FLAGS_video);
-
     if( !cap.isOpened())
     {
       std::cout << "Could not read video file. Exiting." << std::endl;
       return -1;
     }
 
-    stereoextractor->init();
+    cv::VideoCapture depthcap;
+    bool hasdepth = false;
 
-    cv::Mat pnts;
-    ImageFrame image;
-    uint64_t myframe = 0;
-    int skip = FLAGS_skip + 1;
+    if(camera_map[FLAGS_camera] == 2)
+    {
+      hasdepth = true;
+
+      if(FLAGS_depth_video == "")
+      {
+        depthcap = cv::VideoCapture(FLAGS_video + "depth.avi");
+      }
+      else
+      {
+        depthcap = cv::VideoCapture(FLAGS_depth_video);
+      }
+
+    }
+
+    stereoextractor->init();
 
     while(keep_on)
     {
+
       cap >> image.color_;
+      
+      if(hasdepth)
+      {
+        depthcap >> image.depth_;
+      }
         
       if(myframe % skip == 0)
       { 

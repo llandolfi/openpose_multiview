@@ -4,16 +4,14 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <math.h>
 
-
-DEFINE_string(depth_video,              "",      "Path of the depth video file");
-
 bool inited = false;
 
 
-DepthExtractor::DepthExtractor(int argc, char **argv, DepthCamera & camera) : PoseExtractor(argc, argv, camera)
+DepthExtractor::DepthExtractor(int argc, char **argv, DepthCamera & camera, const std::string & depth_video) : PoseExtractor(argc, argv, camera)
 {
 
   cam_ = camera;
+  depthpath_ = depth_video;
 
 }
 
@@ -145,7 +143,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
                         //(double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
-                        Pool(depth_, keypoint.y, keypoint.x, 55, gaussianAvg));
+                        Pool(depth_, keypoint.y, keypoint.x, 5, gaussianAvg));
 
     //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
 
@@ -267,13 +265,13 @@ void DepthExtractor::prepareVideo(const std::string & path)
   }
   std::string depthpath = "";
 
-  if (FLAGS_depth_video == "")
+  if (depthpath_ == "")
   {
     depthpath = path + "depth.avi";
   }
   else
   {
-    depthpath = FLAGS_depth_video;
+    depthpath = depthpath_;
   }
 
   depthoutput_.open(depthpath, CV_FOURCC('D','I','V','X'), 30, S, true);
@@ -307,46 +305,17 @@ void DepthExtractor::process(const std::string & write_keypoint, bool viz)
 void DepthExtractor::extract(const ImageFrame & m)
 { 
 
-  cur_frame_ ++;
   RGB_ = m.color_;
+  depth_ = m.depth_; 
 
-  if(live_)
+  if(!live_)
   {
-
-  depth_ = m.depth_;
+    decodeDepth(depth_, depth_);
   }
 
-  else
-  {
-
-    if(!inited)
-    { 
-      std::string depthpath = "";
-      //TODO: set up a videocapture for the depth video
-      if (FLAGS_depth_video == "")
-      {
-        depthpath = videoname_ + "depth.avi";
-      }
-      else
-      {
-        depthpath = FLAGS_depth_video;
-      }
-      depthcap_ = cv::VideoCapture(depthpath);
-
-      if( !depthcap_.isOpened())
-      {
-        std::cout << "Could not read depth video file. Exiting." << std::endl;
-        exit(-1);
-      }
-    }
-
-    cv::Mat tmpdepth;
-    depthcap_ >> tmpdepth;
-
-    decodeDepth(tmpdepth, depth_);
-  }
-
+  cur_frame_ = cur_frame_ + skip_ + 1;
 }
+
 
 void DepthExtractor::visualize(bool* keep_on)
 {
