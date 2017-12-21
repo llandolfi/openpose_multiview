@@ -4,6 +4,9 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <math.h>
 
+
+DEFINE_string(depth_video,              "",      "Path of the depth video file");
+
 bool inited = false;
 
 
@@ -142,11 +145,11 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
                         //(double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
-                        Pool(depth_, keypoint.y, keypoint.x, 3, MinPool));
+                        Pool(depth_, keypoint.y, keypoint.x, 55, gaussianAvg));
 
-    uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
+    //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
 
-    if(ddepth > 0 && point.x != 0.0 && point.y != 0.0 && confidence > 0.2)
+    if(point.x != 0.0 && point.y != 0.0 && confidence > 0.1)
     {
       point = point / 1000;
       points3D.push_back(point);
@@ -262,9 +265,19 @@ void DepthExtractor::prepareVideo(const std::string & path)
       std::cout  << "Could not open the output video for write: " << std::endl;
       exit(-1);
   }
+  std::string depthpath = "";
 
-  std::string depthpath = path + "depth.avi";
+  if (FLAGS_depth_video == "")
+  {
+    depthpath = path + "depth.avi";
+  }
+  else
+  {
+    depthpath = FLAGS_depth_video;
+  }
+
   depthoutput_.open(depthpath, CV_FOURCC('D','I','V','X'), 30, S, true);
+
   if (!depthoutput_.isOpened())
   {
       std::cout  << "Could not open the depth output video for write: " << std::endl;
@@ -307,9 +320,19 @@ void DepthExtractor::extract(const ImageFrame & m)
   {
 
     if(!inited)
-    {
+    { 
+      std::string depthpath = "";
       //TODO: set up a videocapture for the depth video
-      depthcap_ = cv::VideoCapture(videoname_ + "depth.avi");
+      if (FLAGS_depth_video == "")
+      {
+        depthpath = videoname_ + "depth.avi";
+      }
+      else
+      {
+        depthpath = FLAGS_depth_video;
+      }
+      depthcap_ = cv::VideoCapture(depthpath);
+
       if( !depthcap_.isOpened())
       {
         std::cout << "Could not read depth video file. Exiting." << std::endl;

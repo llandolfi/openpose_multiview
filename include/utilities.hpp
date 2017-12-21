@@ -80,6 +80,8 @@ double AvgPool(const cv::Mat &);
 
 double MinPoolDepth(cv::Mat &);
 
+double gaussianAvg(cv::Mat &);
+
 double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(cv::Mat &)> function);
 
 void PoseProcess(const OpenPoseParams & params, const cv::Mat & image, op::Array<float> & poseKeypoints, cv::Mat & outputImage);

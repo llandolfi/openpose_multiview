@@ -502,6 +502,14 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
 
 }
 
+/*
+Gaussian kernel
+1 4 7 4 1
+4 16 26 16 4
+7 26 41 26 7
+4 16 26 16 4
+1 4 7 4 1
+*/
 
 double MaxPool(const cv::Mat & matrix)
 { 
@@ -558,6 +566,68 @@ double MinPoolDepth(cv::Mat & matrix)
 
   return min;
 }
+
+cv::Mat createGaussianFilter(int kernelsize, double sigma = 1.0)
+{
+    // set standard deviation to 1.0
+    cv::Mat kernel = cv::Mat(kernelsize, kernelsize, CV_64FC1);
+    double r, s = 2.0 * sigma * sigma;
+ 
+    // sum is for normalization
+    double sum = 0.0;
+
+    int hsize = kernelsize/2;
+ 
+    // generate kxk kernel
+    for (int x = -hsize; x <= hsize; x++)
+    {
+        for(int y = -hsize; y <= hsize; y++)
+        {
+            r = sqrt(x*x + y*y);
+            kernel.at<double>(x + hsize,y + hsize) = (exp(-(r*r)/s))/(M_PI * s);
+            sum += kernel.at<double>(x + hsize,y + hsize);
+        }
+    }
+
+    // normalize the Kernel
+    for(int i = 0; i < kernelsize; ++i)
+    {
+        for(int j = 0; j < kernelsize; ++j)
+        {
+            kernel.at<double>(i,j) /= sum;
+            kernel.at<double>(i,j) *= 100.0;
+        }
+    }
+
+    return kernel;
+}
+
+double gaussianAvg(cv::Mat & matrix)
+{
+  //TODO: get gaussian kernel
+  cv::Mat gKernel = createGaussianFilter(matrix.rows);
+
+  double csum = cv::sum(matrix)[0];
+  double esum = 0.0;
+
+  for(int x = 0; x < matrix.rows; x++)
+  {
+    for(int y = 0; y < matrix.cols; y++)
+    {
+      double tmp = (double)matrix.at<uint16_t>(x,y);
+      esum = esum + (tmp * gKernel.at<double>(x,y));
+
+      if(tmp == 0.0)
+      {
+        csum -= gKernel.at<double>(x,y);
+      }
+
+    }
+  }
+
+  return esum/csum;
+}
+
 
 double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(cv::Mat &)> function)
 { 
