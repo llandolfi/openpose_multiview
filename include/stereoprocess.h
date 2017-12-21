@@ -117,13 +117,18 @@ struct DepthExtractor : PoseExtractor {
 
 	std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time);
 
+	void kernel2CSV(int idx, const cv::Mat & kernel);
+
 	cv::Mat RGB_;
 
 	cv::VideoWriter depthoutput_; 
 
 	cv::VideoCapture depthcap_;
-	
+
 	std::string depthpath_;
+
+	std::string kernel_output_;
+	std::ofstream kernelcsv_;
 
 	DepthCamera cam_;
 };

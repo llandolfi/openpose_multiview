@@ -4,6 +4,31 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <math.h>
 
+DEFINE_string(kernel_output,              "",      "Path of the kernel output file");
+
+std::map<int, std::string> body_map = {
+        {0,  "Nose"},
+        {1,  "Neck"},
+        {2,  "RShoulder"},
+        {3,  "RElbow"},
+        {4,  "RWrist"},
+        {5,  "LShoulder"},
+        {6,  "LElbow"},
+        {7,  "LWrist"},
+        {8,  "RHip"},
+        {9,  "RKnee"},
+        {10, "RAnkle"},
+        {11, "LHip"},
+        {12, "LKnee"},
+        {13, "LAnkle"},
+        {14, "REye"},
+        {15, "LEye"},
+        {16, "REar"},
+        {17, "LEar"},
+        {18, "Background"},
+};
+
+
 bool inited = false;
 
 
@@ -12,6 +37,12 @@ DepthExtractor::DepthExtractor(int argc, char **argv, DepthCamera & camera, cons
 
   cam_ = camera;
   depthpath_ = depth_video;
+  kernel_output_ = FLAGS_kernel_output;
+
+  if(kernel_output_ != "")
+  {
+    kernelcsv_.open(kernel_output_);
+  }
 
 }
 
@@ -99,6 +130,31 @@ double DepthExtractor::getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D)
   return cv::norm(points2D - cam0pnts);
 }
 
+void DepthExtractor::kernel2CSV(int idx, const cv::Mat & kernel)
+{
+  //TODO: get current frame, get body part from i, write kernel left to right up to bottom
+  std::vector<int> depths;
+  int frame = cur_frame_;
+  std::string bodypart = body_map[idx];
+
+  for(int i=0; i < kernel.rows; i++)
+  {
+    for(int j=0; j < kernel.cols; j++)
+    {
+      depths.push_back((int)kernel.at<uint16_t>(i,j));
+    }
+  }
+
+  kernelcsv_ << cur_frame_ << " " << bodypart << " ";
+
+  for(auto &a : depths)
+  {
+    kernelcsv_ << a << " ";
+  }
+
+  kernelcsv_ << "\n";
+}
+
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
 
@@ -141,13 +197,19 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
       exit(-1);
     }
 
+    cv::Mat kernel;
     cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
                         //(double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
-                        Pool(depth_, keypoint.y, keypoint.x, 5, gaussianAvg));
+                        Pool(depth_, keypoint.y, keypoint.x, 7, gaussianAvg, kernel));
 
     //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
 
-    if(point.x != 0.0 && point.y != 0.0 && confidence > 0.1)
+    if(FLAGS_kernel_output != "")
+    {
+      kernel2CSV(i,kernel);
+    }
+
+    if(point.x != 0.0 && point.y != 0.0 && point.z != 0.0 && confidence > 0.2)
     {
       point = point / 1000;
       points3D.push_back(point);

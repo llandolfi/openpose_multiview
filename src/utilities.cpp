@@ -562,8 +562,6 @@ double MinPoolDepth(cv::Mat & matrix)
     min = 0.0;
   }
 
-  //std::cout << "returning " << min << std::endl;
-
   return min;
 }
 
@@ -595,7 +593,7 @@ cv::Mat createGaussianFilter(int kernelsize, double sigma = 1.0)
         for(int j = 0; j < kernelsize; ++j)
         {
             kernel.at<double>(i,j) /= sum;
-            kernel.at<double>(i,j) *= 100.0;
+            kernel.at<double>(i,j) *= 270.0;
         }
     }
 
@@ -605,9 +603,14 @@ cv::Mat createGaussianFilter(int kernelsize, double sigma = 1.0)
 double gaussianAvg(cv::Mat & matrix)
 {
   //TODO: get gaussian kernel
+  if(matrix.rows % 2 == 0)
+  {
+    return 0.0;
+  }
   cv::Mat gKernel = createGaussianFilter(matrix.rows);
+  std::cout << matrix << std::endl;
 
-  double csum = cv::sum(matrix)[0];
+  double csum = cv::sum(gKernel)[0];
   double esum = 0.0;
 
   for(int x = 0; x < matrix.rows; x++)
@@ -624,12 +627,14 @@ double gaussianAvg(cv::Mat & matrix)
 
     }
   }
-
-  return esum/csum;
+  std::cout << "csum " << csum << std::endl;
+  std::cout << "esum " << esum << std::endl;
+  std::cout << "esum/csum " << esum/csum << std::endl;
+  return (esum/csum)/4;
 }
 
 
-double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(cv::Mat &)> function)
+double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(cv::Mat &)> function, cv::Mat & kernel)
 { 
 
   if(side % 2 == 0)
@@ -648,6 +653,7 @@ double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(c
   hside = std::min(disp.cols - v, side);
 
   int nside = std::min(wside,hside);
+
   /*
   std::cout << "creating matrix" << std::endl;
   std::cout << "rows: " << disp.rows << " cols: " << disp.cols << std::endl;
@@ -655,6 +661,8 @@ double Pool(const cv::Mat & disp, int u, int v, int side, std::function<double(c
   std::cout << "wlb: " << wlb << " hlb: " << hlb << " wside: " << wside << " hside: " << hside << std::endl;
   */
   cv::Mat matrix(disp(cv::Rect(hlb,wlb,nside,nside)));
+  
+  kernel = matrix;
 
   return function(matrix);
 }
