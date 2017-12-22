@@ -145,7 +145,7 @@ void DepthExtractor::kernel2CSV(int idx, const cv::Mat & kernel)
     }
   }
 
-  kernelcsv_ << cur_frame_ << " " << bodypart << " ";
+  kernelcsv_ << cur_frame_ << " " << idx << " ";
 
   for(auto &a : depths)
   {
@@ -177,7 +177,8 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
   //Maybe smooth a little bit like in disparity?
   for( int i = 0; i < cam0pnts.cols; i++)
-  { 
+  {
+
     cv::Point3d pwithnot = cam0pnts.at<cv::Point3d>(0,i);
     confidence = pwithnot.z;
     cv::Point2d keypoint(cvRound(pwithnot.x), cvRound(pwithnot.y));
