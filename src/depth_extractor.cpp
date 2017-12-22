@@ -3,8 +3,11 @@
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <math.h>
+#include <bitset>
 
 DEFINE_string(kernel_output,              "",      "Path of the kernel output file");
+DEFINE_bool(ramcip,              false,            "set to true if depth data from ramcip dataset");
+
 
 std::map<int, std::string> body_map = {
         {0,  "Nose"},
@@ -43,6 +46,11 @@ DepthExtractor::DepthExtractor(int argc, char **argv, DepthCamera & camera, cons
   {
     kernelcsv_.open(kernel_output_);
   }
+
+}
+
+void DepthExtractor::finalize()
+{
 
 }
 
@@ -155,6 +163,26 @@ void DepthExtractor::kernel2CSV(int idx, const cv::Mat & kernel)
   kernelcsv_ << "\n";
 }
 
+int mostConfident(const cv::Mat & bp)
+{
+
+  std::vector<double> confidences(bp.cols/18);
+
+  for (int i = 0; i < bp.cols/18; i++)
+  { 
+    double sumconfidence = 0.0;
+
+    for(int j = 0; j < 18; j++)
+    {
+      sumconfidence += bp.at<cv::Vec3d>((18*i)+j)[2];
+    }
+
+    confidences[i] = sumconfidence;
+  }
+
+  return *std::max_element(confidences.begin(), confidences.end());
+}
+
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
 
@@ -175,7 +203,9 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
    
   //filterVisible(cam0pnts, cam0pnts);
 
-  //Maybe smooth a little bit like in disparity?
+  //TODO: get only the most confident body
+  int mc = mostConfident(cam0pnts);  
+
   for( int i = 0; i < cam0pnts.cols; i++)
   {
 
@@ -200,12 +230,12 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     cv::Mat kernel;
     cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
-                        //(double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
-                        Pool(depth_, keypoint.y, keypoint.x, 7, gaussianAvg, kernel));
+                        (double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
+                        //Pool(depth_, keypoint.y, keypoint.x, 7, gaussianAvg, kernel));
 
     //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
 
-    if(FLAGS_kernel_output != "")
+    if(FLAGS_kernel_output != "" && i/18 == mc)
     {
       kernel2CSV(i,kernel);
     }
@@ -241,10 +271,10 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 /**
 * Converts depth into RGB image for MPEG encoding
 */
-void encodeDepth(const cv::Mat & depth, cv::Mat & output)
+void DepthExtractor::encodeDepth(const cv::Mat & depth, cv::Mat & output)
 {
-  cv::Mat dc1 = cv::Mat(depth.rows, depth.cols, CV_8UC1);
-  cv::Mat dc2 = cv::Mat(depth.rows, depth.cols, CV_8UC1);
+  cv::Mat dc1 = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC1);
+  cv::Mat dc2 = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC1);
   cv::Mat dummy = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC1);
 
   for (int i=0; i < depth.rows; i++)
@@ -256,7 +286,6 @@ void encodeDepth(const cv::Mat & depth, cv::Mat & output)
 
       dc1.at<uint8_t>(i,j) = ptr[0];
       dc2.at<uint8_t>(i,j) = ptr[1];
-
     }
   }
 
@@ -271,34 +300,74 @@ void encodeDepth(const cv::Mat & depth, cv::Mat & output)
 /**
 * Decodes an encoded depth frame from kinect
 */
-void decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
-{
+void DepthExtractor::decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
+{ 
 
   depth = cv::Mat(rgb.rows, rgb.cols, CV_16UC1);
+
   uint8_t buf[2];
   uint16_t * decodecptr = (uint16_t*)&buf;
+
+  std::vector<cv::Mat> channels(3);
+  cv::split(rgb,channels);
+  //std::cout << channels[1] << std::endl;
 
   for (int i=0; i < depth.rows; i++)
   {
     for(int j=0; j < depth.cols; j++)
     {
       cv::Vec3b value = rgb.at<cv::Vec3b>(i,j);
-      buf[0] = value[0];
-      buf[1] = value[1];
+      //std::cout << "value "<< value << std::endl;
+
+      if(!FLAGS_ramcip)
+      { 
+        buf[0] = value[0];
+        buf[1] = value[1];
+      }
+      else
+      {
+        buf[0] = value[1];
+        buf[1] = value[0];
+      }
+
       depth.at<uint16_t>(i,j) = *decodecptr;
     }
   }
+
+  if(fframe_)
+  { 
+    std::cout << channels[2] << std::endl;
+    fframe_ = false;
+  }
+
 }
 
 void DepthExtractor::appendFrame(const ImageFrame & myframe)
 {
 
  outputVideo_ << myframe.color_;
+
+ if( fframe_)
+ {
+  std::cout << myframe.color_;
+  fframe_ = false;
+ }
  
  //convert depth in normal codec: from single channel 16 bit 
- cv::Mat depthtosave;
+ //cv::Mat depthtosave;
+
+ cv::Mat depthtosave = cv::Mat::zeros(myframe.color_.rows, myframe.color_.cols, CV_8UC3);
  encodeDepth(myframe.depth_, depthtosave);
- depthoutput_ << depthtosave;  
+
+ if(fframe_)
+ {
+   std::vector<cv::Mat> channels(3);
+   cv::split(depthtosave,channels);
+   std::cout << channels[2] << std::endl;
+   fframe_ = false;
+ }
+
+ depthoutput_ << depthtosave.clone();  
 
  timefile_ << std::to_string(myframe.time_stamp_.count()) << "\n";
 }
@@ -320,7 +389,7 @@ void DepthExtractor::prepareVideo(const std::string & path)
 {
 
   cv::Size S = cv::Size(640, 480);
-  outputVideo_.open(path, CV_FOURCC('D','I','V','X'), 30, S, true);
+  outputVideo_.open(path, 0, 30, S, true);
   if (!outputVideo_.isOpened())
   {
       std::cout  << "Could not open the output video for write: " << std::endl;
@@ -337,7 +406,7 @@ void DepthExtractor::prepareVideo(const std::string & path)
     depthpath = depthpath_;
   }
 
-  depthoutput_.open(depthpath, CV_FOURCC('D','I','V','X'), 30, S, true);
+  depthoutput_.open(depthpath, 0, 30, S, true);
 
   if (!depthoutput_.isOpened())
   {
@@ -369,11 +438,20 @@ void DepthExtractor::extract(const ImageFrame & m)
 { 
 
   RGB_ = m.color_;
+
+  if(fframe_)
+  {
+    std::cout << RGB_ << std::endl;
+    fframe_ = false;
+  }
+
   depth_ = m.depth_; 
 
   if(!live_)
   {
-    decodeDepth(depth_, depth_);
+    cv::Mat tmp;
+    decodeDepth(depth_, tmp);
+    depth_ = tmp.clone();
   }
 
   cur_frame_ = cur_frame_ + skip_ + 1;

@@ -529,6 +529,12 @@ int main(int argc, char **argv) {
     {
 
       cap >> image.color_;
+
+      if(image.color_.empty())
+      {
+        stereoextractor->finalize();
+        break;
+      }
       
       if(hasdepth)
       {

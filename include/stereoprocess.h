@@ -56,6 +56,8 @@ struct PoseExtractor {
 
 	virtual std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)=0;
 
+	virtual void finalize(){}
+
 	virtual void setDepth(const cv::Mat & m);
 
 	virtual void init();
@@ -109,6 +111,8 @@ struct DepthExtractor : PoseExtractor {
 
 	virtual void prepareOutputVideo(const std::string & path);
 
+	void finalize();
+
 	double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D);
 
 	void appendFrame(const ImageFrame &);
@@ -118,6 +122,10 @@ struct DepthExtractor : PoseExtractor {
 	std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time);
 
 	void kernel2CSV(int idx, const cv::Mat & kernel);
+
+	void encodeDepth(const cv::Mat & depth, cv::Mat & output);
+
+	void decodeDepth(const cv::Mat & rgb, cv::Mat & depth);
 
 	cv::Mat RGB_;
 
@@ -131,6 +139,8 @@ struct DepthExtractor : PoseExtractor {
 	std::ofstream kernelcsv_;
 
 	DepthCamera cam_;
+
+	bool fframe_ = true;
 };
 
 
