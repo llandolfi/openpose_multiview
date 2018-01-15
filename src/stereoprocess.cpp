@@ -44,7 +44,7 @@ DEFINE_bool(visualize,                  false,          "Visualize keypoints");
 
 DEFINE_bool(show_error,                 false,           "Show the reprojection error on terminal");
 
-DEFINE_int32(udp_port,                  0,               "Stream body data points in JSON format to defined port");
+DEFINE_int32(udp_port,                  9999,               "Stream body data points in JSON format to defined port");
 
 DEFINE_string(udp_address,              "127.0.0.1",      "Stream body data points in JSON format to defined port");
 

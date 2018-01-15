@@ -4,6 +4,7 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <math.h>
 #include <bitset>
+#include <sys/mman.h>
 
 DEFINE_string(kernel_output,              "",      "Path of the kernel output file");
 DEFINE_bool(ramcip,              false,            "set to true if depth data from ramcip dataset");
@@ -268,6 +269,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
   return error;
 }
+
 /**
 * Converts depth into RGB image for MPEG encoding
 */
@@ -294,6 +296,15 @@ void DepthExtractor::encodeDepth(const cv::Mat & depth, cv::Mat & output)
   channels.push_back(dc2);
   channels.push_back(dummy);
 
+  if(fframe_)
+  {
+    std::cout << "THIS is what I wrote " << std::endl;
+    std::cout << dummy << std::endl;
+    std::cout << dc2 << std::endl;
+    std::cout << dc1 << std::endl;
+    fframe_ = false;
+  }
+
   cv::merge(channels, output);
 }
 
@@ -307,10 +318,6 @@ void DepthExtractor::decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
 
   uint8_t buf[2];
   uint16_t * decodecptr = (uint16_t*)&buf;
-
-  std::vector<cv::Mat> channels(3);
-  cv::split(rgb,channels);
-  //std::cout << channels[1] << std::endl;
 
   for (int i=0; i < depth.rows; i++)
   {
@@ -333,41 +340,20 @@ void DepthExtractor::decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
       depth.at<uint16_t>(i,j) = *decodecptr;
     }
   }
-
-  if(fframe_)
-  { 
-    std::cout << channels[2] << std::endl;
-    fframe_ = false;
-  }
-
 }
 
 void DepthExtractor::appendFrame(const ImageFrame & myframe)
 {
 
  outputVideo_ << myframe.color_;
-
- if( fframe_)
- {
-  std::cout << myframe.color_;
-  fframe_ = false;
- }
  
  //convert depth in normal codec: from single channel 16 bit 
  //cv::Mat depthtosave;
 
- cv::Mat depthtosave = cv::Mat::zeros(myframe.color_.rows, myframe.color_.cols, CV_8UC3);
+ cv::Mat depthtosave;
  encodeDepth(myframe.depth_, depthtosave);
 
- if(fframe_)
- {
-   std::vector<cv::Mat> channels(3);
-   cv::split(depthtosave,channels);
-   std::cout << channels[2] << std::endl;
-   fframe_ = false;
- }
-
- depthoutput_ << depthtosave.clone();  
+ depthoutput_ << depthtosave;  
 
  timefile_ << std::to_string(myframe.time_stamp_.count()) << "\n";
 }
@@ -389,7 +375,7 @@ void DepthExtractor::prepareVideo(const std::string & path)
 {
 
   cv::Size S = cv::Size(640, 480);
-  outputVideo_.open(path, 0, 30, S, true);
+  outputVideo_.open(path, CV_FOURCC('D','I','V','X'), 30, S, true);
   if (!outputVideo_.isOpened())
   {
       std::cout  << "Could not open the output video for write: " << std::endl;
@@ -406,7 +392,7 @@ void DepthExtractor::prepareVideo(const std::string & path)
     depthpath = depthpath_;
   }
 
-  depthoutput_.open(depthpath, 0, 30, S, true);
+  depthoutput_.open(depthpath,CV_FOURCC('B','G','R','A'), 30, S, true);
 
   if (!depthoutput_.isOpened())
   {
@@ -438,13 +424,6 @@ void DepthExtractor::extract(const ImageFrame & m)
 { 
 
   RGB_ = m.color_;
-
-  if(fframe_)
-  {
-    std::cout << RGB_ << std::endl;
-    fframe_ = false;
-  }
-
   depth_ = m.depth_; 
 
   if(!live_)

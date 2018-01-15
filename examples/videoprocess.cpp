@@ -539,6 +539,18 @@ int main(int argc, char **argv) {
       if(hasdepth)
       {
         depthcap >> image.depth_;
+
+        if(myframe == 0)
+        {
+          std::cout << "THIS is what I read" << std::endl;
+          std::vector<cv::Mat> channels(3);
+          cv::split(image.depth_,channels);
+          std::cout << channels[2] << std::endl;
+          std::cout << channels[1] << std::endl;
+          std::cout << channels[0] << std::endl;
+
+        }
+
       }
         
       if(myframe % skip == 0)
