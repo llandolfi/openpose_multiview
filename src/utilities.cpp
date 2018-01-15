@@ -131,13 +131,29 @@ std::vector<std::string> CSVTokenize(std::string kpl_str)
   return vec;
 }
 
+void getConfidences(const op::Array<float> & poseKeypoints, std::vector<float> & confidences)
+{ 
+  cv::Mat kpoints;
+  opArray2Mat(poseKeypoints, kpoints);
+
+  for(int i = 0; i < kpoints.cols; i++)
+  {
+    cv::Vec3d p3d = kpoints.at<cv::Vec3d>(0,i);
+    confidences.push_back(p3d[2]);
+  }
+}
+
 /*
-* Produces a CSV string representing body positions found in a single frame by one camera   
+*Produces a CSV string representing 3D body points in a single frame
 */
-void emitCSV(std::ofstream & outputfile, const op::Array<float> & poseKeypoints, int camera, int cur_frame)
-{  
-   std::string kp_str = poseKeypoints.toString();
+void emitCSV3D(std::ofstream & outputfile, const op::Array<float> & poseKeypointsL, int cur_frame, const cv::Mat &points3D)
+{
+   std::string kp_str = poseKeypointsL.toString();
    std::vector<std::string> tokens = CSVTokenize(kp_str);
+   int camera = 0;
+
+   std::vector<float> confidences;
+   getConfidences(poseKeypointsL,confidences);
 
    //if no person detected, output 54 zeros
    if (tokens.size() == 0)
@@ -150,20 +166,32 @@ void emitCSV(std::ofstream & outputfile, const op::Array<float> & poseKeypoints,
 
      outputfile << '\n';
    }
+  
+  else
+  {  
+    for (int i = 0; i < (points3D.cols/18) + 1; i++)
+    {
 
-  for (int i = 0; i < poseKeypoints.getVolume(); i += 54)
-   {
-     outputfile << camera << " " << cur_frame << " " << i/54 << " ";
-     for (int j = 0; j < 54; j++)
-     {
-       outputfile << tokens[i+j] << " ";
-     }
+      outputfile << camera << " " << cur_frame << " " << i << " ";
+      int offset = 18 * i;
 
-     outputfile << '\n';
-   }  
+      for(int j = offset; j < offset + 18; j++)
+      {
+        cv::Vec3d point = points3D.at<cv::Vec3d>(j);
+        outputfile << point[0] << " " << point[1] << " " << point[2] <<" " << confidences[j] << " ";
+        //TODO: add confidence 
+      }
+
+      outputfile << "\n";
+    }
+
+  }
 }
 
-void emitCSV3D(std::ofstream & outputfile, const op::Array<float> & poseKeypoints, int camera, int cur_frame, cv::Mat points3D)
+/*
+* Produces a CSV string representing body positions found in a single frame by one camera   
+*/
+void emitCSV(std::ofstream & outputfile, const op::Array<float> & poseKeypoints, int camera, int cur_frame)
 {  
    std::string kp_str = poseKeypoints.toString();
    std::vector<std::string> tokens = CSVTokenize(kp_str);

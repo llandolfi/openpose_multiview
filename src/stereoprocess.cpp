@@ -40,7 +40,7 @@ DEFINE_double(alpha_pose,               0.6,            "Blending factor (range 
 
 DEFINE_string(write_keypoint,           "",             "Full file path to write people body pose keypoints data. Only CSV format supported");  
 
-DEFINE_string(write_keypoint3D,           "",             "Full file path to write people body pose keypoints 3D. Only CSV format supported");  
+DEFINE_string(write_keypoint3D,         "",             "Full file path to write people body pose keypoints 3D. Only CSV format supported");  
 
 DEFINE_bool(visualize,                  false,          "Visualize keypoints");
 
@@ -164,7 +164,7 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
 
   if(outputfile3D_)
   {
-    emitCSV3D(outputfile_, poseKeypointsL_, 0, cur_frame_, points3D);
+    emitCSV3D(outputfile3D_, poseKeypointsL_, cur_frame_, points3D);
   }
 
 
@@ -194,7 +194,7 @@ void PoseExtractor::init()
 void PoseExtractor::destroy()
 {
   outputfile_.close();
-  outputfile_3D_.close();
+  outputfile3D_.close();
   timefile_.close();
 }
 

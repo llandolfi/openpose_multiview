@@ -64,8 +64,6 @@ struct PoseExtractor {
 
 	virtual void destroy();
 
-	virtual void emitCSV3D() const = 0;
-
 	cv::Mat imageleft_;
 
 	OpenPoseParams pose_params_;
