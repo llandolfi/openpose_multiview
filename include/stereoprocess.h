@@ -64,6 +64,8 @@ struct PoseExtractor {
 
 	virtual void destroy();
 
+	virtual void emitCSV3D() const = 0;
+
 	cv::Mat imageleft_;
 
 	OpenPoseParams pose_params_;
@@ -76,6 +78,7 @@ struct PoseExtractor {
 	cv::VideoWriter outputVideo_; 
 	cv::VideoWriter poseVideo_;
 	std::ofstream outputfile_; 
+	std::ofstream outputfile3D_; 
 
 	std::ofstream timefile_;  
 	std::ofstream jsonfile_;

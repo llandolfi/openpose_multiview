@@ -163,6 +163,34 @@ void emitCSV(std::ofstream & outputfile, const op::Array<float> & poseKeypoints,
    }  
 }
 
+void emitCSV3D(std::ofstream & outputfile, const op::Array<float> & poseKeypoints, int camera, int cur_frame, cv::Mat points3D)
+{  
+   std::string kp_str = poseKeypoints.toString();
+   std::vector<std::string> tokens = CSVTokenize(kp_str);
+
+   //if no person detected, output 54 zeros
+   if (tokens.size() == 0)
+   {
+     outputfile << camera << " " << cur_frame << " " << 0 << " ";
+     for (int j = 0; j < 54; j++)
+     {
+       outputfile << 0.000 << " ";
+     }
+
+     outputfile << '\n';
+   }
+
+  for (int i = 0; i < poseKeypoints.getVolume(); i += 54)
+   {
+     outputfile << camera << " " << cur_frame << " " << i/54 << " ";
+     for (int j = 0; j < 54; j++)
+     {
+       outputfile << tokens[i+j] << " ";
+     }
+
+     outputfile << '\n';
+   }  
+}
 /*
 * Takes the matrix of detected body points and set the zero points to NaN points
 */

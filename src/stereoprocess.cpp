@@ -40,6 +40,8 @@ DEFINE_double(alpha_pose,               0.6,            "Blending factor (range 
 
 DEFINE_string(write_keypoint,           "",             "Full file path to write people body pose keypoints data. Only CSV format supported");  
 
+DEFINE_string(write_keypoint3D,           "",             "Full file path to write people body pose keypoints 3D. Only CSV format supported");  
+
 DEFINE_bool(visualize,                  false,          "Visualize keypoints");
 
 DEFINE_bool(show_error,                 false,           "Show the reprojection error on terminal");
@@ -67,6 +69,18 @@ PoseExtractor::PoseExtractor(int argc, char **argv, Camera & camera) : udpstream
       outputfile_ << "p" << i << "x" << " p" << i << "y" << " p" << i << "conf ";
     }
     outputfile_ << "\n";
+  }
+
+  if(FLAGS_write_keypoint3D != "")
+  {
+    outputfile3D_.open(FLAGS_write_keypoint3D);
+    //TODO:write header of outputfilef
+    outputfile3D_ << "camera frame subject ";
+    for (int i = 0; i < 18; i++)
+    {
+      outputfile3D_ << "p" << i << "x" << " p" << i << "y" << " p" << i << "z" << " p" << i << "conf ";
+    }
+    outputfile3D_ << "\n";
   }
 
   const bool enableGoogleLogging = true;
@@ -137,7 +151,6 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
 
   error = triangulate(points3D);
 
-
   if(FLAGS_udp_port != 0)
   {
     //TODO: generate JSON message, send with updstreamer
@@ -148,6 +161,12 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   {
     jsonfile_ << pnts2JSON(points3D, cur_frame_, std::to_string(image.time_stamp_.count()));
   }
+
+  if(outputfile3D_)
+  {
+    emitCSV3D(outputfile_, poseKeypointsL_, 0, cur_frame_, points3D);
+  }
+
 
   if( FLAGS_show_error)
   {
@@ -175,6 +194,7 @@ void PoseExtractor::init()
 void PoseExtractor::destroy()
 {
   outputfile_.close();
+  outputfile_3D_.close();
   timefile_.close();
 }
 
