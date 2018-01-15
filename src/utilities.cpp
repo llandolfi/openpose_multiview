@@ -139,8 +139,6 @@ void emitCSV(std::ofstream & outputfile, const op::Array<float> & poseKeypoints,
    std::string kp_str = poseKeypoints.toString();
    std::vector<std::string> tokens = CSVTokenize(kp_str);
 
-   std::cout << "number of strings " << tokens.size() << std::endl;
-
    //if no person detected, output 54 zeros
    if (tokens.size() == 0)
    {

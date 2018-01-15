@@ -296,7 +296,8 @@ void DepthExtractor::encodeDepth(const cv::Mat & depth, cv::Mat & output)
   channels.push_back(dc2);
   channels.push_back(dummy);
 
-  if(fframe_)
+  if(false )
+    
   {
     std::cout << "THIS is what I wrote " << std::endl;
     std::cout << dummy << std::endl;

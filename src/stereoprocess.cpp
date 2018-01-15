@@ -403,7 +403,7 @@ void StereoPoseExtractor::visualize(bool * keep_on)
   //TODO: draw circles of different colors depending on body index 
   for(int i = 0; i < cam0pnts.cols/18; i++)
   { 
-    std::cout << "i: " << i << std::endl;
+    //std::cout << "i: " << i << std::endl;
     for (int j = 0; j < 18; j++)
     {
     cv::Point3d pc = cam0pnts.at<cv::Point3d>(0,j + (i*18));

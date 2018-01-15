@@ -524,10 +524,18 @@ int main(int argc, char **argv) {
     }
 
     stereoextractor->init();
-
+    auto starttime= time(0);
+    auto frames = cap.get(CV_CAP_PROP_FRAME_COUNT);
     while(keep_on)
     {
-
+      auto iframe = cap.get(CV_CAP_PROP_POS_FRAMES);
+      auto nowtime= time(0);
+      if(frames != 0)
+      {
+        auto elapsed = nowtime-starttime;
+        auto fps =  iframe/elapsed;
+        std::cout << "frame " << iframe << " over " << frames << " elapsed " << (elapsed/60.0) << "min (fps " << fps << ") remaining " << (frames-iframe)*fps/60.0 << "min" <<  std::endl;
+      }
       cap >> image.color_;
 
       if(image.color_.empty())
@@ -540,7 +548,7 @@ int main(int argc, char **argv) {
       {
         depthcap >> image.depth_;
 
-        if(myframe == 0)
+        if(myframe == 0 && 0)
         {
           std::cout << "THIS is what I read" << std::endl;
           std::vector<cv::Mat> channels(3);
