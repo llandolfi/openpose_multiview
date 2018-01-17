@@ -7,7 +7,7 @@
 #include <sys/mman.h>
 
 DEFINE_string(kernel_output,              "",      "Path of the kernel output file");
-DEFINE_bool(ramcip,              false,            "set to true if depth data from ramcip dataset");
+//DEFINE_bool(ramcip,              false,            "set to true if depth data from ramcip dataset");
 
 
 std::map<int, std::string> body_map = {
@@ -204,7 +204,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
    
   //filterVisible(cam0pnts, cam0pnts);
 
-  //TODO: get only the most confident body
+  //TODO: get only the most confident body if needed
   int mc = mostConfident(cam0pnts);  
 
   for( int i = 0; i < cam0pnts.cols; i++)
@@ -286,8 +286,8 @@ void DepthExtractor::encodeDepth(const cv::Mat & depth, cv::Mat & output)
       uint16_t val = depth.at<uint16_t>(i,j);
       uint8_t * ptr = (uint8_t*)&val;
 
-      dc1.at<uint8_t>(i,j) = ptr[0];
-      dc2.at<uint8_t>(i,j) = ptr[1];
+      dc1.at<uint8_t>(i,j) = ptr[1];
+      dc2.at<uint8_t>(i,j) = ptr[0];
     }
   }
 
@@ -327,17 +327,9 @@ void DepthExtractor::decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
       cv::Vec3b value = rgb.at<cv::Vec3b>(i,j);
       //std::cout << "value "<< value << std::endl;
 
-      if(!FLAGS_ramcip)
-      { 
-        buf[0] = value[0];
-        buf[1] = value[1];
-      }
-      else
-      {
-        buf[0] = value[1];
-        buf[1] = value[0];
-      }
-
+      buf[0] = value[1];
+      buf[1] = value[0];
+      
       depth.at<uint16_t>(i,j) = *decodecptr;
     }
   }

@@ -153,7 +153,7 @@ void emitCSV3D(std::ofstream & outputfile, const op::Array<float> & poseKeypoint
    int camera = 0;
 
    std::vector<float> confidences;
-   getConfidences(poseKeypointsL,confidences);
+   //getConfidences(poseKeypointsL,confidences);
 
    //if no person detected, output 54 zeros
    if (tokens.size() == 0)
@@ -178,8 +178,7 @@ void emitCSV3D(std::ofstream & outputfile, const op::Array<float> & poseKeypoint
       for(int j = offset; j < offset + 18; j++)
       {
         cv::Vec3d point = points3D.at<cv::Vec3d>(j);
-        outputfile << point[0] << " " << point[1] << " " << point[2] <<" " << confidences[j] << " ";
-        //TODO: add confidence 
+        outputfile << point[0] << " " << point[1] << " " << point[2] <<" ";
       }
 
       outputfile << "\n";
