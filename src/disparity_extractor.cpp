@@ -104,6 +104,16 @@ double DisparityExtractor::maxDisp(const cv::Mat & disp, int u, int v, int side)
   return max;
 }
 
+bool DisparityExtractor::track()
+{
+  return false;
+}
+
+double DisparityExtractor::triangulate(const cv::Mat & p2d, cv::Mat & p3d)
+{
+  return 0.0;
+}
+
 double DisparityExtractor::triangulate(cv::Mat & output) 
 {
   getDisparity();

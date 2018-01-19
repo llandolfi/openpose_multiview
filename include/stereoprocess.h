@@ -6,6 +6,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include "opencv2/video/tracking.hpp"
 #include <unistd.h>
 #include <fstream>
 #include <iostream>
@@ -39,6 +40,10 @@ struct PoseExtractor {
 	virtual double go(const ImageFrame & image, const bool verify, cv::Mat &, bool* keep_on);
 
 	virtual double triangulate(cv::Mat &)=0;
+
+	virtual double triangulate(const cv::Mat & p2d, cv::Mat & p3d)=0;
+
+	virtual bool track()=0;
 
 	virtual void process(const std::string & write_keypoint, bool visualize);
 
@@ -92,6 +97,12 @@ struct PoseExtractor {
 	std::string videoname_ = "";
 
 	UDPStreamer udpstreamer_;
+
+	bool trackable_ = false;
+	cv::Mat prev_gray_, gray_;
+	std::vector<cv::Point2f> points_[2];
+	cv::Size winSize_;
+
 };
 
 struct DepthExtractor : PoseExtractor {
@@ -99,6 +110,10 @@ struct DepthExtractor : PoseExtractor {
 	DepthExtractor(int argc, char **argv, DepthCamera & camera, const std::string & depth_video);
 
 	virtual double triangulate(cv::Mat &);
+
+	virtual double triangulate(const cv::Mat & p2d, cv::Mat & p3d);
+
+	virtual bool track();
 
 	virtual void process(const std::string & write_keypoint, bool visualize);
 
@@ -159,6 +174,10 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	virtual double triangulate(cv::Mat &);
 
+	virtual double triangulate(const cv::Mat & p2d, cv::Mat & p3d);
+
+	virtual bool track();
+
 	virtual void visualize(bool* keep_on);
 
 	virtual void process(const std::string & write_keypoint, bool visualize);
@@ -182,6 +201,9 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	StereoCamera * cam_;
 
+	cv::Mat prev_grayR_, grayR_;
+	std::vector<cv::Point2f> pointsR_[2];
+
 };
 
 struct DisparityExtractor : StereoPoseExtractor {
@@ -203,6 +225,10 @@ struct DisparityExtractor : StereoPoseExtractor {
 	virtual void extract(const ImageFrame & image);
 
 	virtual double triangulate(cv::Mat & output); 
+
+	virtual double triangulate(const cv::Mat & p2d, cv::Mat & p3d);
+
+	virtual bool track();
 
 	virtual void visualize(bool * keep_on);
 

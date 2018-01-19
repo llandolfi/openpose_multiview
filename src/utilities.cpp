@@ -88,6 +88,16 @@ void vector2Mat(const std::vector<cv::Point2d> & points, cv::Mat & pmat)
   }
 }
 
+void mat2Vector(const cv::Mat & mat, std::vector<cv::Point2f> bodyparts)
+{
+  for(int i = 0; i < mat.cols; i++)
+  {
+    cv::Point3f pp = mat.at<cv::Point3f>(0,i);
+    cv::Point2f p(pp.x,pp.y);
+    bodyparts.push_back(p);
+  }
+}
+
 /*
 *TODO: check implementation on openpose library. There exists for sure.
 */

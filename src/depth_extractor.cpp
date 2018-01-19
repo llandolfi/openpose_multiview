@@ -184,6 +184,16 @@ int mostConfident(const cv::Mat & bp)
   return *std::max_element(confidences.begin(), confidences.end());
 }
 
+bool DepthExtractor::track()
+{
+  return false;
+}
+
+double DepthExtractor::triangulate(const cv::Mat & p2d, cv::Mat & p3d)
+{
+  return 0.0;
+}
+
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
 
@@ -205,7 +215,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   //filterVisible(cam0pnts, cam0pnts);
 
   //TODO: get only the most confident body if needed
-  int mc = mostConfident(cam0pnts);  
+  //int mc = mostConfident(cam0pnts);  
 
   for( int i = 0; i < cam0pnts.cols; i++)
   {
@@ -236,7 +246,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
 
-    if(FLAGS_kernel_output != "" && i/18 == mc)
+    if(FLAGS_kernel_output != "")// && i/18 == mc)
     {
       kernel2CSV(i,kernel);
     }

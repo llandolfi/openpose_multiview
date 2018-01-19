@@ -50,6 +50,8 @@ DEFINE_int32(udp_port,                  9999,               "Stream body data po
 
 DEFINE_string(udp_address,              "127.0.0.1",      "Stream body data points in JSON format to defined port");
 
+DEFINE_bool(2Dtracking,                  false,         "Track 2D points points instead of detecting on each frame");
+
 
 PoseExtractor::PoseExtractor(int argc, char **argv, Camera & camera) : udpstreamer_(FLAGS_udp_port, FLAGS_udp_address)
 {
@@ -78,7 +80,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, Camera & camera) : udpstream
     outputfile3D_ << "camera frame subject ";
     for (int i = 0; i < 18; i++)
     {
-      outputfile3D_ << "p" << i << "x" << " p" << i << "y" << " p" << i << "z" << " p" << i << "conf ";
+      outputfile3D_ << "p" << i << "x" << " p" << i << "y" << " p" << i << "z ";
     }
     outputfile3D_ << "\n";
   }
@@ -147,9 +149,23 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
 
   extract(image);
 
-  process(FLAGS_write_keypoint, FLAGS_visualize);
+  //Trackable if previous frame was detection or no error in previous tracking
+  if(trackable_)
+  {
+    track();
+  }
+  else
+  {
+    process(FLAGS_write_keypoint, FLAGS_visualize);
 
-  error = triangulate(points3D);
+    if(FLAGS_2Dtracking)
+    {
+      trackable_ = true;
+      gray_.copyTo(prev_gray_);
+    }
+
+    error = triangulate(points3D);
+  }
 
   if(FLAGS_udp_port != 0)
   {
@@ -341,7 +357,44 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   }
 }
 
-//TODO: compare the movement of the projection with the one of the 3D points. Smooth it in case too much difference
+bool StereoPoseExtractor::track()
+{
+
+  std::vector<uchar> status;
+  std::vector<float> err;
+  imageleft_.copyTo(gray_);
+  imageright_.copyTo(grayR_);
+  cv::Mat bodypartsL, bodypartsR;
+
+  //TODO: transform bodyparts points into array
+  opArray2Mat(poseKeypointsL_, bodypartsL);
+  opArray2Mat(poseKeypointsR_,bodypartsR);
+
+  mat2Vector(bodypartsL,points_[0]);
+  cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err);
+
+  std::vector<cv::Point2f> tmp[2];
+  tmp[0] = points_[0];
+  tmp[1] = points_[1];
+
+  //calculate MSE tracking backwards
+  cv::calcOpticalFlowPyrLK(prev_gray_, gray_, tmp[1], tmp[0], status, err);
+
+  //TODO: get the error
+
+  //TODO: repeat for the right image
+  mat2Vector(bodypartsR,pointsR_[0]);
+  cv::calcOpticalFlowPyrLK(prev_gray_, gray_, pointsR_[0], pointsR_[1], status, err);
+
+  tmp[0] = pointsR_[0];
+  tmp[1] = pointsR_[1];
+
+  //TODO: get the error
+
+  //TODO: return false if the error is not acceptable
+
+ return true;
+}
 
 
 void StereoPoseExtractor::extract(const ImageFrame & image)
@@ -388,6 +441,16 @@ void StereoPoseExtractor::getPoints(cv::Mat & outputL, cv::Mat & outputR)
 {
   opArray2Mat(poseKeypointsL_, outputL);
   opArray2Mat(poseKeypointsR_, outputR);
+}
+
+/*
+*
+*/
+double StereoPoseExtractor::triangulate(const cv::Mat & p2d, cv::Mat & p3d)
+{
+
+  return 0.0;
+
 }
 
 /*

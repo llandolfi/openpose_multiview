@@ -44,9 +44,9 @@ DEFINE_string(video,                    "",             "Use a video instead of 
 
 DEFINE_int32(fps,                       60,              "Camera capture speed. Frame per second");
 
-DEFINE_bool(verify,                     false,            "Show projection of triangulated points"); 
+DEFINE_bool(verify,                     false,           "Show projection of triangulated points"); 
 
-DEFINE_bool(disparity,                  false,            "Use disparity map instead of triangulation to get 3D body points");  
+DEFINE_bool(disparity,                  false,           "Use disparity map instead of triangulation to get 3D body points");  
 
 DEFINE_string(resolution,               "1280x720",     "The image resolution (display and output). Use \"-1x-1\" to force the program to use the"
                                                         " default images resolution.");  
@@ -55,11 +55,11 @@ DEFINE_string(camera,                   "ZED",          "The camera used for str
 
 DEFINE_string(write_video,              "",             "Full file path to write input stream from camera.");
 
-DEFINE_string(write_output_video,        "",             "Full file path to write rendered frames in motion JPEG video format.");
+DEFINE_string(write_output_video,        "",            "Full file path to write rendered frames in motion JPEG video format.");
 
 DEFINE_int32(skip,                       0,             "Number of frame to skip when processing video");
 
-DEFINE_string(depth_video,              "",      "Path of the depth video file");
+DEFINE_string(depth_video,                "",           "Path of the depth video file");
 
 
 PoseExtractor * stereoextractor;
