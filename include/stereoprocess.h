@@ -41,8 +41,6 @@ struct PoseExtractor {
 
 	virtual double triangulate(cv::Mat &)=0;
 
-	virtual double triangulate(const cv::Mat & p2d, cv::Mat & p3d)=0;
-
 	virtual bool track()=0;
 
 	virtual void process(const std::string & write_keypoint, bool visualize);
@@ -94,11 +92,15 @@ struct PoseExtractor {
 	bool live_ = true;
 	bool videooutput_ = false;
 
+	bool tracking2D_ = false;
+	bool tracking3D_ = false;
+	bool tracked_ = false;
+	cv::Mat trackedpnts_;
+
 	std::string videoname_ = "";
 
 	UDPStreamer udpstreamer_;
 
-	bool trackable_ = false;
 	cv::Mat prev_gray_, gray_;
 	std::vector<cv::Point2f> points_[2];
 	cv::Size winSize_;
@@ -110,8 +112,6 @@ struct DepthExtractor : PoseExtractor {
 	DepthExtractor(int argc, char **argv, DepthCamera & camera, const std::string & depth_video);
 
 	virtual double triangulate(cv::Mat &);
-
-	virtual double triangulate(const cv::Mat & p2d, cv::Mat & p3d);
 
 	virtual bool track();
 
@@ -174,8 +174,6 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	virtual double triangulate(cv::Mat &);
 
-	virtual double triangulate(const cv::Mat & p2d, cv::Mat & p3d);
-
 	virtual bool track();
 
 	virtual void visualize(bool* keep_on);
@@ -195,6 +193,8 @@ struct StereoPoseExtractor : PoseExtractor {
 	virtual double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D, bool left = true);
 
 	op::Array<float> poseKeypointsR_;
+	cv::Mat trackedpntsR_;
+
 	cv::Mat outputImageR_;
 
 	cv::Mat imageright_;
@@ -225,8 +225,6 @@ struct DisparityExtractor : StereoPoseExtractor {
 	virtual void extract(const ImageFrame & image);
 
 	virtual double triangulate(cv::Mat & output); 
-
-	virtual double triangulate(const cv::Mat & p2d, cv::Mat & p3d);
 
 	virtual bool track();
 

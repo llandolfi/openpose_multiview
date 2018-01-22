@@ -109,11 +109,6 @@ bool DisparityExtractor::track()
   return false;
 }
 
-double DisparityExtractor::triangulate(const cv::Mat & p2d, cv::Mat & p3d)
-{
-  return 0.0;
-}
-
 double DisparityExtractor::triangulate(cv::Mat & output) 
 {
   getDisparity();

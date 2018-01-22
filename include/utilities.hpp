@@ -50,7 +50,7 @@ cv::Point2d project(const cv::Mat & intrinsics, const cv::Vec3d & p3d);
 
 void vector2Mat(const std::vector<cv::Point2d> & points, cv::Mat & pmat);
 
-void mat2Vector(const cv::Mat & mat, std::vector<cv::Point2f> bodyparts);
+void mat2Vector(const cv::Mat & mat, std::vector<cv::Point2f> & bodyparts);
 
 void opArray2Mat(const op::Array<float> & keypoints, cv::Mat & campnts);
 

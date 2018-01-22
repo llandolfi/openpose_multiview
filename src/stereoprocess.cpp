@@ -85,6 +85,11 @@ PoseExtractor::PoseExtractor(int argc, char **argv, Camera & camera) : udpstream
     outputfile3D_ << "\n";
   }
 
+  if(FLAGS_2Dtracking)
+  {
+    tracking2D_ = true;
+  }
+
   const bool enableGoogleLogging = true;
   // Step 2 - Read Google flags (user defined configuration)
   // outputSize
@@ -145,27 +150,24 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
 { 
 
   points3D = cv::Mat();
-  double error = 0.0;  
+  double error = 0.0; 
+  bool tracked = false; 
 
   extract(image);
 
   //Trackable if previous frame was detection or no error in previous tracking
-  if(trackable_)
-  {
-    track();
+  if(tracking2D_)
+  {  
+    tracked_ = track();
   }
-  else
-  {
+
+  if(!tracked_)
+  { 
+    //TODO: better call it detect
     process(FLAGS_write_keypoint, FLAGS_visualize);
-
-    if(FLAGS_2Dtracking)
-    {
-      trackable_ = true;
-      gray_.copyTo(prev_gray_);
-    }
-
-    error = triangulate(points3D);
   }
+
+  error = triangulate(points3D);
 
   if(FLAGS_udp_port != 0)
   {
@@ -178,7 +180,7 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
     jsonfile_ << pnts2JSON(points3D, cur_frame_, std::to_string(image.time_stamp_.count()));
   }
 
-  if(outputfile3D_)
+  if(FLAGS_write_keypoint3D != "")
   {
     emitCSV3D(outputfile3D_, poseKeypointsL_, cur_frame_, points3D);
   }
@@ -360,10 +362,17 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
 bool StereoPoseExtractor::track()
 {
 
+  if(prev_gray_.empty())
+  {
+    return false;
+  }
+
   std::vector<uchar> status;
   std::vector<float> err;
   imageleft_.copyTo(gray_);
+  cv::cvtColor(gray_,gray_,CV_BGR2GRAY);
   imageright_.copyTo(grayR_);
+  cv::cvtColor(grayR_,grayR_,CV_BGR2GRAY);
   cv::Mat bodypartsL, bodypartsR;
 
   //TODO: transform bodyparts points into array
@@ -371,7 +380,14 @@ bool StereoPoseExtractor::track()
   opArray2Mat(poseKeypointsR_,bodypartsR);
 
   mat2Vector(bodypartsL,points_[0]);
+
   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err);
+  trackedpnts_ = cv::Mat(1,bodypartsL.cols, CV_64FC2);
+
+  for(int i = 0; i < trackedpnts_.cols; i++)
+  {
+    trackedpnts_.at<cv::Point2d>(0,i) = points_[1][i];
+  }
 
   std::vector<cv::Point2f> tmp[2];
   tmp[0] = points_[0];
@@ -385,9 +401,16 @@ bool StereoPoseExtractor::track()
   //TODO: repeat for the right image
   mat2Vector(bodypartsR,pointsR_[0]);
   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, pointsR_[0], pointsR_[1], status, err);
+  trackedpnts_ = cv::Mat(1,bodypartsL.cols, CV_64FC2);
+
+  for(int i = 0; i < trackedpnts_.cols; i++)
+  {
+    trackedpntsR_.at<cv::Point2d>(0,i) = pointsR_[1][i];
+  }
 
   tmp[0] = pointsR_[0];
   tmp[1] = pointsR_[1];
+  cv::calcOpticalFlowPyrLK(prev_gray_, gray_, tmp[1], tmp[0], status, err);
 
   //TODO: get the error
 
@@ -402,7 +425,6 @@ void StereoPoseExtractor::extract(const ImageFrame & image)
 
   cur_frame_ ++;
   splitVertically(image.color_, imageleft_, imageright_);
-
 }
 
 void PoseExtractor::process(const std::string & write_keypoint, bool viz)
@@ -425,6 +447,12 @@ void StereoPoseExtractor::process(const std::string & write_keypoint, bool viz)
   
   PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
 
+  if(tracking2D_)
+  {
+    cv::cvtColor(imageleft_,prev_gray_,CV_BGR2GRAY);
+    cv::cvtColor(imageright_,prev_grayR_,CV_BGR2GRAY);
+  }
+
   if( write_keypoint != "")
   {
     emitCSV(outputfile_, poseKeypointsL_, 0, cur_frame_);
@@ -444,16 +472,6 @@ void StereoPoseExtractor::getPoints(cv::Mat & outputL, cv::Mat & outputR)
 }
 
 /*
-*
-*/
-double StereoPoseExtractor::triangulate(const cv::Mat & p2d, cv::Mat & p3d)
-{
-
-  return 0.0;
-
-}
-
-/*
 * Returns the 3D points from stereo couples acquired from stereo camera  
 */
 double StereoPoseExtractor::triangulate(cv::Mat & finalpoints)
@@ -464,7 +482,15 @@ double StereoPoseExtractor::triangulate(cv::Mat & finalpoints)
   cv::Mat cam0pnts;
   cv::Mat cam1pnts;
 
-  getPoints(cam0pnts,cam1pnts);
+  if(tracking2D_)
+  {
+    getPoints(cam0pnts,cam1pnts);
+  }
+  else
+  {
+    cam0pnts = trackedpnts_;
+    cam1pnts = trackedpntsR_;
+  }
 
   if(cam0pnts.empty() || cam1pnts.empty())
   {

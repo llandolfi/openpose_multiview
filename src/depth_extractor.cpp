@@ -186,12 +186,72 @@ int mostConfident(const cv::Mat & bp)
 
 bool DepthExtractor::track()
 {
-  return false;
-}
 
-double DepthExtractor::triangulate(const cv::Mat & p2d, cv::Mat & p3d)
-{
-  return 0.0;
+  if(prev_gray_.empty())
+  {
+    return false;
+  }
+
+  if(cur_frame_ % 3 == 0)
+  {
+    points_[0].clear();
+    return false;
+  }
+
+   std::vector<uchar> status;
+   std::vector<float> err;
+
+   if(points_[0].size() == 0)
+   {
+    cv::Mat bodypartsL;
+    cv::cvtColor(RGB_,gray_,CV_BGR2GRAY);
+    opArray2Mat(poseKeypointsL_, bodypartsL);
+    mat2Vector(bodypartsL,points_[0]);
+   }
+
+   //TODO: problem do not track points equal to 0
+   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err);
+
+   trackedpnts_ = cv::Mat(1,points_[0].size(), CV_64FC3);
+
+   for(int i = 0; i < trackedpnts_.cols; i++)
+   {  
+    if(points_[0][i].x != 0.0 || points_[0][i].y != 0.0)
+    {
+      trackedpnts_.at<cv::Point3d>(0,i) = cv::Point3d(points_[1][i].x, points_[1][i].y, 0.0);
+    }
+    else
+    {
+      trackedpnts_.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,0.0);
+    }
+
+    if(points_[1][i].x > depth_.cols || points_[1][i].y > depth_.rows)
+    {
+      points_[0].clear();
+      return false;
+    }
+   }
+
+   std::vector<cv::Point2f> tmp[2];
+   tmp[0] = points_[0];
+   tmp[1] = points_[1];
+
+   //calculate MSE tracking backwards
+   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, tmp[1], tmp[0], status, err);
+
+   //TODO: get the error between tmp[0] and points_[0]
+   double cumerror = 0.0;
+   for(int i = 0; i < tmp[0].size(); i++)
+   {
+    cumerror = cumerror + 0.0;
+   }
+
+   //TODO: return false if the error is not acceptable
+
+   //TODO: swap p[0] and p[1]
+   points_[0] = points_[1];
+
+   return true;
 }
 
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
@@ -200,7 +260,16 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
   double epsilon = 100;
   cv::Mat cam0pnts;
   double confidence = 0.0;
-  opArray2Mat(poseKeypointsL_, cam0pnts);
+
+
+  if(!tracked_)
+  {
+    opArray2Mat(poseKeypointsL_, cam0pnts);
+  }
+  else
+  {
+    cam0pnts = trackedpnts_;
+  }
 
 
   if(cam0pnts.empty())
@@ -241,7 +310,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     cv::Mat kernel;
     cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
-                        (double)depth_.at<uint16_t>(cvRound(keypoint.y), cvRound(keypoint.x)));
+                        (double)depth_.at<uint16_t>(keypoint.y, keypoint.x));
                         //Pool(depth_, keypoint.y, keypoint.x, 7, gaussianAvg, kernel));
 
     //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
@@ -251,25 +320,41 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
       kernel2CSV(i,kernel);
     }
 
-    if(point.x != 0.0 && point.y != 0.0 && point.z != 0.0 && confidence > 0.2)
+    if(tracked_)
     {
-      point = point / 1000;
-      points3D.push_back(point);
-      points2D.push_back(keypoint);
+      if(point.x != 0.0 && point.y != 0.0 && point.z != 0.0)
+      {
+        point = point / 1000;
+        points3D.push_back(point);
+        points2D.push_back(keypoint);
+      }
+      else
+      { 
+        double n = std::numeric_limits<double>::quiet_NaN();
+        points3D.push_back(cv::Point3d(n,n,n));
+        points2D.push_back(keypoint);
+      }
     }
     else
-    { 
-      double n = std::numeric_limits<double>::quiet_NaN();
-      points3D.push_back(cv::Point3d(n,n,n));
-      points2D.push_back(keypoint);
+    {
+      if(point.x != 0.0 && point.y != 0.0 && point.z != 0.0 && confidence > 0.2)
+      {
+        point = point / 1000;
+        points3D.push_back(point);
+        points2D.push_back(keypoint);
+      }
+      else
+      { 
+        double n = std::numeric_limits<double>::quiet_NaN();
+        points3D.push_back(cv::Point3d(n,n,n));
+        points2D.push_back(keypoint);
+      }
     }
   }
 
   //TODO: remove zeros also from points3D and the correspondent from points 2D
   cam0pnts = cv::Mat(points2D);
   cv::transpose(cam0pnts, cam0pnts);
-
-  //std::cout << "Nose: " << points3D[0] << std::endl;
 
   cv::Mat tmp = cv::Mat(points3D);
   finalpoints = tmp.clone();
@@ -305,16 +390,6 @@ void DepthExtractor::encodeDepth(const cv::Mat & depth, cv::Mat & output)
   channels.push_back(dc1);
   channels.push_back(dc2);
   channels.push_back(dummy);
-
-  if(false )
-    
-  {
-    std::cout << "THIS is what I wrote " << std::endl;
-    std::cout << dummy << std::endl;
-    std::cout << dc2 << std::endl;
-    std::cout << dc1 << std::endl;
-    fframe_ = false;
-  }
 
   cv::merge(channels, output);
 }
@@ -412,6 +487,11 @@ void DepthExtractor::process(const std::string & write_keypoint, bool viz)
 
   PoseProcess(pose_params_, RGB_, poseKeypointsL_, outputImageL_);
 
+  if(tracking2D_)
+  {
+    cv::cvtColor(RGB_,prev_gray_,CV_BGR2GRAY);
+  }
+
   if( write_keypoint != "")
   {
     emitCSV(outputfile_, poseKeypointsL_, 0, cur_frame_);
@@ -456,7 +536,7 @@ void DepthExtractor::visualize(bool* keep_on)
 void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 { 
 
-  cv::Mat verification = outputImageL_.clone();
+  cv::Mat verification = RGB_.clone();
 
   if(!pnts.empty())
   {
@@ -469,6 +549,17 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
     { 
       cv::circle(verification,c,5,cv::Scalar(255,0,0),5);
     }
+
+    //TODO: draw also the keypoints got from the tracking
+    /*if(tracked_)
+    {
+      for(int i = 0; i < trackedpnts_.cols; i++)
+      {
+        cv::Point3d pcc = trackedpnts_.at<cv::Point3d>(0,i);
+        cv::Point2d pc =cv::Point2d(pcc.x, pcc.y);
+        cv::circle(verification,pc,5,cv::Scalar(0,255,255),5);
+      }
+    }*/
 
   }
 
