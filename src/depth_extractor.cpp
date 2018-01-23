@@ -192,7 +192,7 @@ bool DepthExtractor::track()
     return false;
   }
 
-  if(cur_frame_ % 3 == 0)
+  if(cur_frame_ % 6 == 0)
   {
     points_[0].clear();
     return false;
@@ -210,7 +210,7 @@ bool DepthExtractor::track()
    }
 
    //TODO: problem do not track points equal to 0
-   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err);
+   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err, cv::Size(21,21));
 
    trackedpnts_ = cv::Mat(1,points_[0].size(), CV_64FC3);
 
@@ -232,26 +232,39 @@ bool DepthExtractor::track()
     }
    }
 
-   std::vector<cv::Point2f> tmp[2];
-   tmp[0] = points_[0];
-   tmp[1] = points_[1];
+  std::vector<cv::Point2f> tmp[2];
+  tmp[0] = points_[0];
+  tmp[1] = points_[1];
 
-   //calculate MSE tracking backwards
-   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, tmp[1], tmp[0], status, err);
+  //calculate MSE tracking backwards
+  cv::calcOpticalFlowPyrLK(gray_,prev_gray_, tmp[1], tmp[0], status, err);
 
    //TODO: get the error between tmp[0] and points_[0]
-   double cumerror = 0.0;
+   double cur_error = 0.0;
    for(int i = 0; i < tmp[0].size(); i++)
    {
-    cumerror = cumerror + 0.0;
+    cur_error = cv::norm((tmp[0][i] - points_[0][i]));
+    if(cur_error > 1.5)
+    {
+      points_[0].clear();
+      return false;
+    }
    }
 
-   //TODO: return false if the error is not acceptable
+  for(int i = 0; i < points_[0].size(); i++)
+  {
+    if(points_[0][i].x != 0.0 && points_[0][i].y != 0.0)
+    {
+      points_[0][i] = points_[1][i];
+    }
+    else
+    {
+      points_[0][i] = cv::Point2f(0.0,0.0);
+    }
+   
+  }
 
-   //TODO: swap p[0] and p[1]
-   points_[0] = points_[1];
-
-   return true;
+ return true;
 }
 
 double DepthExtractor::triangulate(cv::Mat & finalpoints)

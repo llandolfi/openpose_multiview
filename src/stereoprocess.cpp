@@ -117,9 +117,6 @@ std::string StereoPoseExtractor::pnts2JSON(const cv::Mat & pnts, int frame, cons
   Json::Value points;
   Json::Value colors;
 
-
-  std::cout << "Sending " << pnts.cols << " points " << std::endl;
-
   cam_->JSONPoints(pnts,points);
   
   colors["r"] = 1.0;
@@ -395,8 +392,6 @@ bool StereoPoseExtractor::track()
 
   //calculate MSE tracking backwards
   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, tmp[1], tmp[0], status, err);
-
-  //TODO: get the error
 
   //TODO: repeat for the right image
   mat2Vector(bodypartsR,pointsR_[0]);
