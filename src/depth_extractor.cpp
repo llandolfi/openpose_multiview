@@ -192,22 +192,22 @@ bool DepthExtractor::track()
     return false;
   }
 
-  if(cur_frame_ % 6 == 0)
+  if(cur_frame_ % 5 == 0)
   {
     points_[0].clear();
     return false;
   }
 
+  if(points_[0].size() == 0)
+  {
+   cv::Mat bodypartsL;
+   cv::cvtColor(RGB_,gray_,CV_BGR2GRAY);
+   opArray2Mat(poseKeypointsL_, bodypartsL);
+   mat2Vector(bodypartsL,points_[0]);
+  }
+
    std::vector<uchar> status;
    std::vector<float> err;
-
-   if(points_[0].size() == 0)
-   {
-    cv::Mat bodypartsL;
-    cv::cvtColor(RGB_,gray_,CV_BGR2GRAY);
-    opArray2Mat(poseKeypointsL_, bodypartsL);
-    mat2Vector(bodypartsL,points_[0]);
-   }
 
    //TODO: problem do not track points equal to 0
    cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err, cv::Size(21,21));

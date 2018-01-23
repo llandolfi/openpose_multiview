@@ -119,9 +119,9 @@ std::string StereoPoseExtractor::pnts2JSON(const cv::Mat & pnts, int frame, cons
 
   cam_->JSONPoints(pnts,points);
   
-  colors["r"] = 1.0;
+  colors["r"] = 0;
   colors["g"] = 0;
-  colors["b"] = 0;
+  colors["b"] = 1.0;
   
 
   Json::Value root;
@@ -356,62 +356,166 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   }
 }
 
+bool PoseExtractor::track()
+{
+    std::vector<uchar> status;
+    std::vector<float> err;
+
+    //TODO: problem do not track points equal to 0
+    cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err, cv::Size(21,21));
+
+    trackedpnts_ = cv::Mat(1,points_[0].size(), CV_64FC3);
+
+    for(int i = 0; i < trackedpnts_.cols; i++)
+    {  
+     if(points_[0][i].x != 0.0 || points_[0][i].y != 0.0)
+     {
+       trackedpnts_.at<cv::Point3d>(0,i) = cv::Point3d(points_[1][i].x, points_[1][i].y, 0.0);
+     }
+     else
+     {
+       trackedpnts_.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,0.0);
+     }
+
+     if(points_[1][i].x > gray_.cols || points_[1][i].y > gray_.rows)
+     {
+       points_[0].clear();
+       return false;
+     }
+    }
+
+   std::vector<cv::Point2f> tmp[2];
+   tmp[0] = points_[0];
+   tmp[1] = points_[1];
+
+   //calculate MSE tracking backwards
+   cv::calcOpticalFlowPyrLK(gray_,prev_gray_, tmp[1], tmp[0], status, err);
+
+    //TODO: get the error between tmp[0] and points_[0]
+    double cur_error = 0.0;
+    for(int i = 0; i < tmp[0].size(); i++)
+    {
+     cur_error = cv::norm((tmp[0][i] - points_[0][i]));
+     if(cur_error > 1.5)
+     {
+       points_[0].clear();
+       return false;
+     }
+    }
+
+   for(int i = 0; i < points_[0].size(); i++)
+   {
+     if(points_[0][i].x != 0.0 && points_[0][i].y != 0.0)
+     {
+       points_[0][i] = points_[1][i];
+     }
+     else
+     {
+       points_[0][i] = cv::Point2f(0.0,0.0);
+     }
+    
+   }
+
+  return true;
+}
+
 bool StereoPoseExtractor::track()
 {
-
-  if(prev_gray_.empty())
+  if(prev_gray_.empty() || prev_grayR_.empty())
   {
     return false;
   }
 
+  if(cur_frame_ % 30 == 0)
+  {
+    points_[0].clear();
+    pointsR_[0].clear();
+    return false;
+  }
+
+  if(points_[0].size() == 0)
+  {
+   cv::Mat bodypartsL;
+   cv::cvtColor(imageleft_,gray_,CV_BGR2GRAY);
+   opArray2Mat(poseKeypointsL_, bodypartsL);
+   mat2Vector(bodypartsL,points_[0]);
+  }
+
+  if(pointsR_[0].size() == 0)
+  {
+   cv::Mat bodypartsR;
+   cv::cvtColor(imageright_,grayR_,CV_BGR2GRAY);
+   opArray2Mat(poseKeypointsR_, bodypartsR);
+   mat2Vector(bodypartsR,pointsR_[0]);
+  }
+
+  bool trackleft = PoseExtractor::track();
+  bool trackright = true;
+
   std::vector<uchar> status;
   std::vector<float> err;
-  imageleft_.copyTo(gray_);
-  cv::cvtColor(gray_,gray_,CV_BGR2GRAY);
-  imageright_.copyTo(grayR_);
-  cv::cvtColor(grayR_,grayR_,CV_BGR2GRAY);
-  cv::Mat bodypartsL, bodypartsR;
 
-  //TODO: transform bodyparts points into array
-  opArray2Mat(poseKeypointsL_, bodypartsL);
-  opArray2Mat(poseKeypointsR_,bodypartsR);
+  //TODO: problem do not track points equal to 0
+  cv::calcOpticalFlowPyrLK(prev_grayR_, grayR_, pointsR_[0], pointsR_[1], status, err, cv::Size(21,21));
 
-  mat2Vector(bodypartsL,points_[0]);
+  trackedpntsR_ = cv::Mat(1,pointsR_[0].size(), CV_64FC3);
 
-  cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err);
-  trackedpnts_ = cv::Mat(1,bodypartsL.cols, CV_64FC2);
+  for(int i = 0; i < trackedpntsR_.cols; i++)
+  {  
+   if(pointsR_[0][i].x != 0.0 || pointsR_[0][i].y != 0.0)
+   {
+     trackedpntsR_.at<cv::Point3d>(0,i) = cv::Point3d(pointsR_[1][i].x, pointsR_[1][i].y, 0.0);
+   }
+   else
+   {
+     trackedpntsR_.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,0.0);
+   }
 
-  for(int i = 0; i < trackedpnts_.cols; i++)
-  {
-    trackedpnts_.at<cv::Point2d>(0,i) = points_[1][i];
+   if(pointsR_[1][i].x > grayR_.cols || pointsR_[1][i].y > grayR_.rows)
+   {
+     trackright = false;
+   }
   }
 
-  std::vector<cv::Point2f> tmp[2];
-  tmp[0] = points_[0];
-  tmp[1] = points_[1];
+ std::vector<cv::Point2f> tmp[2];
+ tmp[0] = pointsR_[0];
+ tmp[1] = pointsR_[1];
 
-  //calculate MSE tracking backwards
-  cv::calcOpticalFlowPyrLK(prev_gray_, gray_, tmp[1], tmp[0], status, err);
+ //calculate MSE tracking backwards
+ cv::calcOpticalFlowPyrLK(grayR_,prev_grayR_, tmp[1], tmp[0], status, err);
 
-  //TODO: repeat for the right image
-  mat2Vector(bodypartsR,pointsR_[0]);
-  cv::calcOpticalFlowPyrLK(prev_gray_, gray_, pointsR_[0], pointsR_[1], status, err);
-  trackedpnts_ = cv::Mat(1,bodypartsL.cols, CV_64FC2);
-
-  for(int i = 0; i < trackedpnts_.cols; i++)
+  //TODO: get the error between tmp[0] and points_[0]
+  double cur_error = 0.0;
+  for(int i = 0; i < tmp[0].size(); i++)
   {
-    trackedpntsR_.at<cv::Point2d>(0,i) = pointsR_[1][i];
+   cur_error = cv::norm((tmp[0][i] - pointsR_[0][i]));
+   if(cur_error > 1.5)
+   {  
+    std::cout << "setting false here " << std::endl;
+    trackright = false;
+   }
   }
 
-  tmp[0] = pointsR_[0];
-  tmp[1] = pointsR_[1];
-  cv::calcOpticalFlowPyrLK(prev_gray_, gray_, tmp[1], tmp[0], status, err);
+ for(int i = 0; i < pointsR_[0].size(); i++)
+ {
+   if(pointsR_[0][i].x != 0.0 && pointsR_[0][i].y != 0.0)
+   {
+     pointsR_[0][i] = pointsR_[1][i];
+   }
+   else
+   {
+     pointsR_[0][i] = cv::Point2f(0.0,0.0);
+   }
+ }
 
-  //TODO: get the error
+if(trackright)
+{
+  pointsR_[0].clear();
+}
 
-  //TODO: return false if the error is not acceptable
-
- return true;
+std::cout << trackright << std::endl;
+std::cout << "Tracked " << (trackright && trackleft) << std::endl;
+return trackright && trackleft;
 }
 
 
@@ -477,15 +581,17 @@ double StereoPoseExtractor::triangulate(cv::Mat & finalpoints)
   cv::Mat cam0pnts;
   cv::Mat cam1pnts;
 
-  if(tracking2D_)
+  if(!tracked_)
   {
-    getPoints(cam0pnts,cam1pnts);
+    opArray2Mat(poseKeypointsL_, cam0pnts);
+    opArray2Mat(poseKeypointsR_, cam1pnts);
   }
   else
   {
     cam0pnts = trackedpnts_;
     cam1pnts = trackedpntsR_;
   }
+
 
   if(cam0pnts.empty() || cam1pnts.empty())
   {
