@@ -6,7 +6,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
-#include "opencv2/video/tracking.hpp"
 #include <unistd.h>
 #include <fstream>
 #include <iostream>
@@ -203,6 +202,9 @@ struct StereoPoseExtractor : PoseExtractor {
 
 	cv::Mat prev_grayR_, grayR_;
 	std::vector<cv::Point2f> pointsR_[2];
+
+	bool tracked_left_ = false;
+	bool tracked_right_ = false;
 
 };
 

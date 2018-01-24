@@ -94,3 +94,6 @@ void PoseProcess(const OpenPoseParams & params, const cv::Mat & image, op::Array
 */
 void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & sorted_left, cv::Mat & sorted_right);
 
+bool trackLK(const cv::Mat & previous, const cv::Mat & current, std::vector<cv::Point2f> & ps, std::vector<cv::Point2f> & pe,
+              double max_error, cv::Mat & output);
+

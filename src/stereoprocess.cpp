@@ -160,9 +160,12 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
 
   if(!tracked_)
   { 
-    //TODO: better call it detect
     process(FLAGS_write_keypoint, FLAGS_visualize);
   }
+ /* else
+  {
+    std::cout << "tracked " << std::endl;
+  }*/
 
   error = triangulate(points3D);
 
@@ -356,69 +359,6 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   }
 }
 
-bool PoseExtractor::track()
-{
-    std::vector<uchar> status;
-    std::vector<float> err;
-
-    //TODO: problem do not track points equal to 0
-    cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err, cv::Size(21,21));
-
-    trackedpnts_ = cv::Mat(1,points_[0].size(), CV_64FC3);
-
-    for(int i = 0; i < trackedpnts_.cols; i++)
-    {  
-     if(points_[0][i].x != 0.0 || points_[0][i].y != 0.0)
-     {
-       trackedpnts_.at<cv::Point3d>(0,i) = cv::Point3d(points_[1][i].x, points_[1][i].y, 0.0);
-     }
-     else
-     {
-       trackedpnts_.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,0.0);
-     }
-
-     if(points_[1][i].x > gray_.cols || points_[1][i].y > gray_.rows)
-     {
-       points_[0].clear();
-       return false;
-     }
-    }
-
-   std::vector<cv::Point2f> tmp[2];
-   tmp[0] = points_[0];
-   tmp[1] = points_[1];
-
-   //calculate MSE tracking backwards
-   cv::calcOpticalFlowPyrLK(gray_,prev_gray_, tmp[1], tmp[0], status, err);
-
-    //TODO: get the error between tmp[0] and points_[0]
-    double cur_error = 0.0;
-    for(int i = 0; i < tmp[0].size(); i++)
-    {
-     cur_error = cv::norm((tmp[0][i] - points_[0][i]));
-     if(cur_error > 1.5)
-     {
-       points_[0].clear();
-       return false;
-     }
-    }
-
-   for(int i = 0; i < points_[0].size(); i++)
-   {
-     if(points_[0][i].x != 0.0 && points_[0][i].y != 0.0)
-     {
-       points_[0][i] = points_[1][i];
-     }
-     else
-     {
-       points_[0][i] = cv::Point2f(0.0,0.0);
-     }
-    
-   }
-
-  return true;
-}
-
 bool StereoPoseExtractor::track()
 {
   if(prev_gray_.empty() || prev_grayR_.empty())
@@ -426,7 +366,7 @@ bool StereoPoseExtractor::track()
     return false;
   }
 
-  if(cur_frame_ % 30 == 0)
+  if(cur_frame_ % 5 == 0)
   {
     points_[0].clear();
     pointsR_[0].clear();
@@ -449,73 +389,20 @@ bool StereoPoseExtractor::track()
    mat2Vector(bodypartsR,pointsR_[0]);
   }
 
-  bool trackleft = PoseExtractor::track();
-  bool trackright = true;
+  tracked_left_ = trackLK(prev_gray_, gray_, points_[0], points_[1], 2.0, trackedpnts_);
+  tracked_right_ = trackLK(prev_grayR_, grayR_, pointsR_[0], pointsR_[1], 2.0, trackedpntsR_);
 
-  std::vector<uchar> status;
-  std::vector<float> err;
-
-  //TODO: problem do not track points equal to 0
-  cv::calcOpticalFlowPyrLK(prev_grayR_, grayR_, pointsR_[0], pointsR_[1], status, err, cv::Size(21,21));
-
-  trackedpntsR_ = cv::Mat(1,pointsR_[0].size(), CV_64FC3);
-
-  for(int i = 0; i < trackedpntsR_.cols; i++)
-  {  
-   if(pointsR_[0][i].x != 0.0 || pointsR_[0][i].y != 0.0)
-   {
-     trackedpntsR_.at<cv::Point3d>(0,i) = cv::Point3d(pointsR_[1][i].x, pointsR_[1][i].y, 0.0);
-   }
-   else
-   {
-     trackedpntsR_.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,0.0);
-   }
-
-   if(pointsR_[1][i].x > grayR_.cols || pointsR_[1][i].y > grayR_.rows)
-   {
-     trackright = false;
-   }
-  }
-
- std::vector<cv::Point2f> tmp[2];
- tmp[0] = pointsR_[0];
- tmp[1] = pointsR_[1];
-
- //calculate MSE tracking backwards
- cv::calcOpticalFlowPyrLK(grayR_,prev_grayR_, tmp[1], tmp[0], status, err);
-
-  //TODO: get the error between tmp[0] and points_[0]
-  double cur_error = 0.0;
-  for(int i = 0; i < tmp[0].size(); i++)
+  if(!tracked_left_)
   {
-   cur_error = cv::norm((tmp[0][i] - pointsR_[0][i]));
-   if(cur_error > 1.5)
-   {  
-    std::cout << "setting false here " << std::endl;
-    trackright = false;
-   }
+    points_[0].clear();
   }
 
- for(int i = 0; i < pointsR_[0].size(); i++)
- {
-   if(pointsR_[0][i].x != 0.0 && pointsR_[0][i].y != 0.0)
-   {
-     pointsR_[0][i] = pointsR_[1][i];
-   }
-   else
-   {
-     pointsR_[0][i] = cv::Point2f(0.0,0.0);
-   }
- }
+  if(!tracked_right_)
+  {
+    pointsR_[0].clear();
+  }
 
-if(trackright)
-{
-  pointsR_[0].clear();
-}
-
-std::cout << trackright << std::endl;
-std::cout << "Tracked " << (trackright && trackleft) << std::endl;
-return trackright && trackleft;
+  return tracked_left_ && tracked_right_;
 }
 
 
@@ -538,18 +425,38 @@ void StereoPoseExtractor::appendFrame(const ImageFrame & myframe)
   timefile_ << std::to_string(myframe.time_stamp_.count()) << "\n";
 }
 
-//TODO: save time by using OpenPose in a single image? 
 void StereoPoseExtractor::process(const std::string & write_keypoint, bool viz)
 { 
 
-  PoseExtractor::process(write_keypoint, viz);
+  //TODO: check if tracked left or right, act consequently
+  if(!tracked_left_)
+  {
+    PoseExtractor::process(write_keypoint, viz);
+  }
+  else
+  {
+    std::cout << "tack left " << std::endl;
+  }
   
-  PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
+  if(!tracked_right_)
+  {
+    PoseProcess(pose_params_, imageright_, poseKeypointsR_, outputImageR_);
+  }
+  else
+  {
+    std::cout << "track right " << std::endl;
+  }
 
   if(tracking2D_)
-  {
-    cv::cvtColor(imageleft_,prev_gray_,CV_BGR2GRAY);
-    cv::cvtColor(imageright_,prev_grayR_,CV_BGR2GRAY);
+  { 
+    if(!tracked_left_)
+    {
+      cv::cvtColor(imageleft_,prev_gray_,CV_BGR2GRAY);
+    }
+    if(!tracked_right_)
+    {
+      cv::cvtColor(imageright_,prev_grayR_,CV_BGR2GRAY);
+    }
   }
 
   if( write_keypoint != "")
@@ -581,14 +488,21 @@ double StereoPoseExtractor::triangulate(cv::Mat & finalpoints)
   cv::Mat cam0pnts;
   cv::Mat cam1pnts;
 
-  if(!tracked_)
+  if(!tracked_left_)
   {
-    opArray2Mat(poseKeypointsL_, cam0pnts);
-    opArray2Mat(poseKeypointsR_, cam1pnts);
+    opArray2Mat(poseKeypointsL_, cam0pnts); 
   }
   else
   {
     cam0pnts = trackedpnts_;
+  }
+
+  if(!tracked_right_)
+  {
+    opArray2Mat(poseKeypointsR_, cam1pnts);
+  }
+  else
+  {
     cam1pnts = trackedpntsR_;
   }
 
@@ -659,7 +573,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
   cv::namedWindow("Verification", CV_WINDOW_AUTOSIZE);
 
-  cv::Mat verification = outputImageR_.clone();
+  cv::Mat verification = imageright_.clone();
 
   if(!pnts.empty())
   {

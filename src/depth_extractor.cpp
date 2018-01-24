@@ -185,14 +185,9 @@ int mostConfident(const cv::Mat & bp)
 }
 
 bool DepthExtractor::track()
-{
+{ 
 
-  if(prev_gray_.empty())
-  {
-    return false;
-  }
-
-  if(cur_frame_ % 5 == 0)
+  if(cur_frame_ % 30 == 1)
   {
     points_[0].clear();
     return false;
@@ -201,70 +196,23 @@ bool DepthExtractor::track()
   if(points_[0].size() == 0)
   {
    cv::Mat bodypartsL;
-   cv::cvtColor(RGB_,gray_,CV_BGR2GRAY);
    opArray2Mat(poseKeypointsL_, bodypartsL);
    mat2Vector(bodypartsL,points_[0]);
   }
 
-   std::vector<uchar> status;
-   std::vector<float> err;
+  bool nclear = trackLK(prev_gray_, gray_, points_[0], points_[1], 1.5, trackedpnts_);
 
-   //TODO: problem do not track points equal to 0
-   cv::calcOpticalFlowPyrLK(prev_gray_, gray_, points_[0], points_[1], status, err, cv::Size(21,21));
-
-   trackedpnts_ = cv::Mat(1,points_[0].size(), CV_64FC3);
-
-   for(int i = 0; i < trackedpnts_.cols; i++)
-   {  
-    if(points_[0][i].x != 0.0 || points_[0][i].y != 0.0)
-    {
-      trackedpnts_.at<cv::Point3d>(0,i) = cv::Point3d(points_[1][i].x, points_[1][i].y, 0.0);
-    }
-    else
-    {
-      trackedpnts_.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,0.0);
-    }
-
-    if(points_[1][i].x > depth_.cols || points_[1][i].y > depth_.rows)
-    {
-      points_[0].clear();
-      return false;
-    }
-   }
-
-  std::vector<cv::Point2f> tmp[2];
-  tmp[0] = points_[0];
-  tmp[1] = points_[1];
-
-  //calculate MSE tracking backwards
-  cv::calcOpticalFlowPyrLK(gray_,prev_gray_, tmp[1], tmp[0], status, err);
-
-   //TODO: get the error between tmp[0] and points_[0]
-   double cur_error = 0.0;
-   for(int i = 0; i < tmp[0].size(); i++)
-   {
-    cur_error = cv::norm((tmp[0][i] - points_[0][i]));
-    if(cur_error > 1.5)
-    {
-      points_[0].clear();
-      return false;
-    }
-   }
-
-  for(int i = 0; i < points_[0].size(); i++)
+  if(!nclear)
   {
-    if(points_[0][i].x != 0.0 && points_[0][i].y != 0.0)
-    {
-      points_[0][i] = points_[1][i];
-    }
-    else
-    {
-      points_[0][i] = cv::Point2f(0.0,0.0);
-    }
-   
+    points_[0].clear();
   }
 
- return true;
+  if(nclear)
+  {
+    prev_gray_ = gray_.clone();
+  }
+  
+  return nclear;
 }
 
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
@@ -502,7 +450,7 @@ void DepthExtractor::process(const std::string & write_keypoint, bool viz)
 
   if(tracking2D_)
   {
-    cv::cvtColor(RGB_,prev_gray_,CV_BGR2GRAY);
+    cv::cvtColor(RGB_, prev_gray_, CV_BGR2GRAY);
   }
 
   if( write_keypoint != "")
@@ -526,7 +474,12 @@ void DepthExtractor::extract(const ImageFrame & m)
   {
     cv::Mat tmp;
     decodeDepth(depth_, tmp);
-    depth_ = tmp.clone();
+    depth_ = tmp;
+  }
+
+  if(tracking2D_)
+  {
+    cv::cvtColor(RGB_, gray_, CV_BGR2GRAY);
   }
 
   cur_frame_ = cur_frame_ + skip_ + 1;
@@ -560,19 +513,22 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
     for (auto & c : points2D)
     { 
-      cv::circle(verification,c,5,cv::Scalar(255,0,0),5);
+      cv::circle(verification,c,6,cv::Scalar(255,0,0),5);
     }
 
     //TODO: draw also the keypoints got from the tracking
-    /*if(tracked_)
+    if(tracked_)
     {
       for(int i = 0; i < trackedpnts_.cols; i++)
       {
         cv::Point3d pcc = trackedpnts_.at<cv::Point3d>(0,i);
         cv::Point2d pc =cv::Point2d(pcc.x, pcc.y);
-        cv::circle(verification,pc,5,cv::Scalar(0,255,255),5);
+        if(pcc.x != 0.0 && pcc.y != 0.0)
+        {
+          cv::circle(verification,pc,2,cv::Scalar(0,255,255),5);
+        }
       }
-    }*/
+    }
 
   }
 

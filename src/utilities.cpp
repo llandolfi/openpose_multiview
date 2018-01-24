@@ -1,4 +1,5 @@
 #include "utilities.hpp"
+#include "opencv2/video/tracking.hpp"
 #include <limits>
 #include <map>
 
@@ -521,6 +522,7 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
   associate(bodies_left, bodies_right, minindsL);
   associate(bodies_right, bodies_left, minindsR);
 
+  /*
   std::cout << "Min inds L " << std::endl;
   for (auto e : minindsL)
   {
@@ -534,6 +536,7 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
     std::cout << e << " ";
   }
   std::cout << "\n";
+  */
 
 
   //TODO: find conflicts: minindsL[i] contains the index of the body associated with i with respet to i
@@ -551,7 +554,7 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
 
   for(std::map<int,int>::iterator it = corresp.begin(); it != corresp.end(); ++it)
   {
-    std::cout << "associating left " << it->second << " with right " << it->first << std::endl;
+   // std::cout << "associating left " << it->second << " with right " << it->first << std::endl;
     //std::cout << "left size: " << bodies_left.size() << " right size: " << bodies_right.size() << std::endl;
     proper_right.push_back(bodies_right[it->first]);
     proper_left.push_back(bodies_left[it->second]);
@@ -753,5 +756,68 @@ void PoseProcess(const OpenPoseParams & params, const cv::Mat & inputImage, op::
    // Step 6 - OpenPose output format to cv::Mat
    outputImage = params.opOutputToCvMatL_.formatToCvMat(outputArray);
 
+}
+
+bool trackLK(const cv::Mat & previous, const cv::Mat & current, std::vector<cv::Point2f> & ps, std::vector<cv::Point2f> & pe,
+              double max_error, cv::Mat & output)
+{
+   std::vector<uchar> status;
+   std::vector<float> err;
+
+   //std::cout << "difference " << cv::norm(previous - current) << std::endl;
+
+   //TODO: problem do not track points equal to 0
+   cv::calcOpticalFlowPyrLK(previous, current, ps, pe, status, err);
+
+   output = cv::Mat(1,ps.size(), CV_64FC3);
+
+   for(int i = 0; i < output.cols; i++)
+   {  
+    if(ps[i].x != 0.0 || ps[i].y != 0.0)
+    {
+      output.at<cv::Point3d>(0,i) = cv::Point3d(pe[i].x, pe[i].y, 0.0);
+    }
+    else
+    {
+      output.at<cv::Point3d>(0,i) = cv::Point3d(0.0,0.0,0.0);
+    }
+
+    if(pe[i].x > current.cols || pe[i].y > current.rows)
+    {
+      return false;
+    }
+   }
+
+  std::vector<cv::Point2f> tmp[2];
+  tmp[0] = ps;
+  tmp[1] = pe;
+
+  //calculate MSE tracking backwards
+  cv::calcOpticalFlowPyrLK(current,previous, tmp[1], tmp[0], status, err);
+
+   //TODO: get the error between tmp[0] and points_[0]
+   double cur_error = 0.0;
+   for(int i = 0; i < tmp[0].size(); i++)
+   {
+    cur_error = cv::norm((tmp[0][i] - ps[i]));
+    if(cur_error > max_error)
+    {
+      return false;
+    }
+   }
+
+  for(int i = 0; i < ps.size(); i++)
+  {
+    if(ps[i].x != 0.0 && ps[i].y != 0.0)
+    {
+      ps[i] = pe[i];
+    }
+    else
+    {
+      ps[i] = cv::Point2f(0.0,0.0);
+    }
+  } 
+
+  return true;
 }
 
