@@ -616,6 +616,20 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
         cv::circle(verification,points2D[i],6,cv::Scalar(255,0,0),5);
       }
     }
+
+    if(tracked_right_)
+    {
+      for(int i = 0; i < trackedpntsR_.cols; i++)
+      {
+        cv::Point3d pcc = trackedpntsR_.at<cv::Point3d>(0,i);
+        cv::Point2d pc = cv::Point2d(pcc.x, pcc.y);
+        if(pcc.x != 0.0 && pcc.y != 0.0)
+        {
+          cv::circle(verification,pc,2,cv::Scalar(0,255,255),5);
+        }
+      }
+    }
+
   } 
 
   if(videooutput_)
