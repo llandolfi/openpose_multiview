@@ -52,6 +52,8 @@ DEFINE_string(udp_address,              "127.0.0.1",      "Stream body data poin
 
 DEFINE_bool(2Dtracking,                  false,         "Track 2D points points instead of detecting on each frame");
 
+DEFINE_bool(track_error,                 false,         "Detect the tracking error ");
+
 
 PoseExtractor::PoseExtractor(int argc, char **argv, Camera & camera) : udpstreamer_(FLAGS_udp_port, FLAGS_udp_address)
 {
@@ -161,6 +163,15 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   if(!tracked_)
   { 
     process(FLAGS_write_keypoint, FLAGS_visualize);
+  }
+  else
+  {
+    if(FLAGS_track_error)
+    {
+      process(FLAGS_write_keypoint, FLAGS_visualize);
+      double t_err = computeTrackError();
+      std::cout << "tracking error on 2D points " << t_err <<std::endl;
+    }
   }
 
   error = triangulate(points3D);
@@ -408,6 +419,14 @@ bool StereoPoseExtractor::track()
   return tracked_left_ && tracked_right_;
 }
 
+double StereoPoseExtractor::computeTrackError()
+{
+  cv::Mat cam0pnts,cam1pnts;
+  opArray2Mat(poseKeypointsL_, cam0pnts);
+  opArray2Mat(poseKeypointsR_, cam1pnts);
+
+  return (computeTrackErrorU(cam0pnts, trackedpnts_) + computeTrackErrorU(cam1pnts, trackedpntsR_))/2.0;
+}
 
 void StereoPoseExtractor::extract(const ImageFrame & image)
 {

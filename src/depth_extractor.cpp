@@ -187,7 +187,9 @@ int mostConfident(const cv::Mat & bp)
 bool DepthExtractor::track()
 { 
 
-  if(cur_frame_ % 10 == 1)
+  bool trackerror = true;
+
+  if(cur_frame_ % 5 == 1)
   {
     points_[0].clear();
     return false;
@@ -213,6 +215,13 @@ bool DepthExtractor::track()
   }
   
   return nclear;
+}
+
+double DepthExtractor::computeTrackError()
+{
+  cv::Mat cam0pnts;
+  opArray2Mat(poseKeypointsL_, cam0pnts);
+  return computeTrackErrorU(cam0pnts, trackedpnts_);
 }
 
 double DepthExtractor::triangulate(cv::Mat & finalpoints)

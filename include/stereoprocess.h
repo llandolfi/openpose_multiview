@@ -56,6 +56,8 @@ struct PoseExtractor {
 
 	virtual void prepareOutputVideo(const std::string & path)=0;
 
+	virtual double computeTrackError()=0;
+
 	virtual std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)=0;
 
 	virtual void finalize(){}
@@ -142,6 +144,8 @@ struct DepthExtractor : PoseExtractor {
 
 	void decodeDepth(const cv::Mat & rgb, cv::Mat & depth);
 
+	double computeTrackError();
+
 	cv::Mat RGB_;
 
 	cv::VideoWriter depthoutput_; 
@@ -168,6 +172,8 @@ struct StereoPoseExtractor : PoseExtractor {
 	void parseIntrinsicMatrix(const std::string path = "../settings/SN1499.conf");
 
 	std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time);
+
+	double computeTrackError();
 
 	virtual void getPoints(cv::Mat &, cv::Mat &);
 

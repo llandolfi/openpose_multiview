@@ -821,3 +821,29 @@ bool trackLK(const cv::Mat & previous, const cv::Mat & current, std::vector<cv::
   return true;
 }
 
+double computeTrackErrorU(const cv::Mat & detected, const cv::Mat & trackedpnts)
+{
+  cv::Mat XYZ_D[3];
+  cv::Mat XYZ_T[3];
+
+  //TODO: remove the third element from the matrices
+  cv::split(detected,XYZ_D);
+  cv::split(trackedpnts, XYZ_T);
+
+  std::vector<cv::Mat> channels_detected;
+  std::vector<cv::Mat> channels_tracked;
+
+  channels_detected.push_back(XYZ_D[0]);
+  channels_detected.push_back(XYZ_D[1]);
+
+  channels_tracked.push_back(XYZ_T[0]);
+  channels_tracked.push_back(XYZ_T[1]);
+
+  cv::Mat mat_t, mat_d;
+
+  cv::merge(channels_detected, mat_d);
+  cv::merge(channels_tracked, mat_t);
+
+  return cv::norm(mat_d - mat_t);
+}
+

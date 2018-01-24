@@ -97,3 +97,5 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
 bool trackLK(const cv::Mat & previous, const cv::Mat & current, std::vector<cv::Point2f> & ps, std::vector<cv::Point2f> & pe,
               double max_error, cv::Mat & output);
 
+double computeTrackErrorU(const cv::Mat & detected, const cv::Mat & trackedpnts);
+
