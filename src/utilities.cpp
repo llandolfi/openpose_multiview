@@ -775,7 +775,7 @@ bool trackLK(const cv::Mat & previous, const cv::Mat & current, std::vector<cv::
    {  
     if(ps[i].x != 0.0 || ps[i].y != 0.0)
     {
-      output.at<cv::Point3d>(0,i) = cv::Point3d(pe[i].x, pe[i].y, 0.0);
+      output.at<cv::Point3d>(0,i) = cv::Point3d(pe[i].x, pe[i].y, 1.0);
     }
     else
     {

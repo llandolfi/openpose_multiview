@@ -187,7 +187,7 @@ int mostConfident(const cv::Mat & bp)
 bool DepthExtractor::track()
 { 
 
-  if(cur_frame_ % 30 == 1)
+  if(cur_frame_ % 10 == 1)
   {
     points_[0].clear();
     return false;
@@ -200,7 +200,7 @@ bool DepthExtractor::track()
    mat2Vector(bodypartsL,points_[0]);
   }
 
-  bool nclear = trackLK(prev_gray_, gray_, points_[0], points_[1], 1.5, trackedpnts_);
+  bool nclear = trackLK(prev_gray_, gray_, points_[0], points_[1], 2.0, trackedpnts_);
 
   if(!nclear)
   {
@@ -228,7 +228,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
     opArray2Mat(poseKeypointsL_, cam0pnts);
   }
   else
-  {
+  { 
     cam0pnts = trackedpnts_;
   }
 
@@ -501,7 +501,6 @@ void DepthExtractor::visualize(bool* keep_on)
 
 void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 { 
-
   cv::Mat verification = RGB_.clone();
 
   if(!pnts.empty())

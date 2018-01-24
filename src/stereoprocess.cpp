@@ -162,10 +162,6 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   { 
     process(FLAGS_write_keypoint, FLAGS_visualize);
   }
- /* else
-  {
-    std::cout << "tracked " << std::endl;
-  }*/
 
   error = triangulate(points3D);
 
@@ -376,7 +372,6 @@ bool StereoPoseExtractor::track()
   if(points_[0].size() == 0)
   {
    cv::Mat bodypartsL;
-   cv::cvtColor(imageleft_,gray_,CV_BGR2GRAY);
    opArray2Mat(poseKeypointsL_, bodypartsL);
    mat2Vector(bodypartsL,points_[0]);
   }
@@ -384,7 +379,6 @@ bool StereoPoseExtractor::track()
   if(pointsR_[0].size() == 0)
   {
    cv::Mat bodypartsR;
-   cv::cvtColor(imageright_,grayR_,CV_BGR2GRAY);
    opArray2Mat(poseKeypointsR_, bodypartsR);
    mat2Vector(bodypartsR,pointsR_[0]);
   }
@@ -396,10 +390,19 @@ bool StereoPoseExtractor::track()
   {
     points_[0].clear();
   }
+  else
+  {
+    prev_gray_ = gray_.clone();
+  }
 
   if(!tracked_right_)
   {
     pointsR_[0].clear();
+  }
+  else
+  {
+    //Try to swap?
+    prev_grayR_ = grayR_.clone();
   }
 
   return tracked_left_ && tracked_right_;
@@ -411,6 +414,13 @@ void StereoPoseExtractor::extract(const ImageFrame & image)
 
   cur_frame_ ++;
   splitVertically(image.color_, imageleft_, imageright_);
+
+  if(tracking2D_)
+  {
+    cv::cvtColor(imageleft_, gray_, CV_BGR2GRAY);
+    cv::cvtColor(imageright_, grayR_, CV_BGR2GRAY);
+  }
+
 }
 
 void PoseExtractor::process(const std::string & write_keypoint, bool viz)
@@ -428,6 +438,12 @@ void StereoPoseExtractor::appendFrame(const ImageFrame & myframe)
 void StereoPoseExtractor::process(const std::string & write_keypoint, bool viz)
 { 
 
+
+  if(!tracked_left_ && !tracked_right_)
+  {
+    std::cout << "ALL detected " << std::endl;
+  }
+
   //TODO: check if tracked left or right, act consequently
   if(!tracked_left_)
   {
@@ -435,7 +451,7 @@ void StereoPoseExtractor::process(const std::string & write_keypoint, bool viz)
   }
   else
   {
-    std::cout << "tack left " << std::endl;
+    std::cout << "track left " << std::endl;
   }
   
   if(!tracked_right_)
@@ -611,7 +627,7 @@ void StereoPoseExtractor::verify(const cv::Mat & pnts, bool* keep_on)
   cv::imshow("Verification", verification);
   
 
-  short k = cvWaitKey(10);
+  short k = cvWaitKey(3);
 
   if (k == 27)
   {   
