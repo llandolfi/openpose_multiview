@@ -60,6 +60,8 @@ struct PoseExtractor {
 
 	virtual std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time)=0;
 
+	virtual void outputPoints(const cv::Mat & points3D);
+
 	virtual void finalize(){}
 
 	virtual void setDepth(const cv::Mat & m);
@@ -84,6 +86,8 @@ struct PoseExtractor {
 
 	std::ofstream timefile_;  
 	std::ofstream jsonfile_;
+
+	std::ofstream error_file_;
 
 	int cur_frame_;	
 	int skip_ = 0;
@@ -196,6 +200,8 @@ struct StereoPoseExtractor : PoseExtractor {
 	virtual void prepareOutputVideo(const std::string & path);
 
 	virtual double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D, bool left = true);
+
+	void outputPoints(const cv::Mat & points3D);
 
 	op::Array<float> poseKeypointsR_;
 	cv::Mat trackedpntsR_;

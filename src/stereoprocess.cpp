@@ -52,7 +52,7 @@ DEFINE_string(udp_address,              "127.0.0.1",      "Stream body data poin
 
 DEFINE_bool(2Dtracking,                  false,         "Track 2D points points instead of detecting on each frame");
 
-DEFINE_bool(track_error,                 false,         "Detect the tracking error ");
+DEFINE_string(track_error,                 "",            "Detect the tracking error and output on file");
 
 
 PoseExtractor::PoseExtractor(int argc, char **argv, Camera & camera) : udpstreamer_(FLAGS_udp_port, FLAGS_udp_address)
@@ -90,6 +90,13 @@ PoseExtractor::PoseExtractor(int argc, char **argv, Camera & camera) : udpstream
   if(FLAGS_2Dtracking)
   {
     tracking2D_ = true;
+
+    if(FLAGS_track_error != "")
+    {
+      error_file_.open(FLAGS_track_error);
+      error_file_ << "frame " << "error" << "\n";
+    }
+
   }
 
   const bool enableGoogleLogging = true;
@@ -166,11 +173,15 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   }
   else
   {
-    if(FLAGS_track_error)
+    if(FLAGS_track_error != "")
     {
       process(FLAGS_write_keypoint, FLAGS_visualize);
       double t_err = computeTrackError();
-      std::cout << "tracking error on 2D points " << t_err <<std::endl;
+      if(t_err > -1.0)
+      {
+        error_file_ << cur_frame_ << " " << t_err << "\n";
+      }
+      //std::cout << "tracking error on 2D points " << t_err <<"\n";
     }
   }
 
@@ -189,7 +200,8 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
 
   if(FLAGS_write_keypoint3D != "")
   {
-    emitCSV3D(outputfile3D_, poseKeypointsL_, cur_frame_, points3D);
+    outputPoints(points3D);
+    //emitCSV3D(outputfile3D_, poseKeypointsL_, cur_frame_, points3D);
   }
 
 
@@ -221,6 +233,7 @@ void PoseExtractor::destroy()
   outputfile_.close();
   outputfile3D_.close();
   timefile_.close();
+  error_file_.close();
 }
 
 void PoseExtractor::setDepth(const cv::Mat & m)
@@ -228,12 +241,20 @@ void PoseExtractor::setDepth(const cv::Mat & m)
   depth_ = m;
 }
 
+void PoseExtractor::outputPoints(const cv::Mat & points3D)
+{
+  emitCSV3D(outputfile3D_, poseKeypointsL_, cur_frame_, points3D, 0);
+}
 
 StereoPoseExtractor::StereoPoseExtractor(int argc, char **argv, StereoCamera & cam) : PoseExtractor(argc, argv, cam)                              
 {  
   cam_ = &(cam);
 }
 
+void StereoPoseExtractor::outputPoints(const cv::Mat & points3D)
+{
+  emitCSV3D(outputfile3D_, poseKeypointsL_ ,cur_frame_, points3D, 0);
+}
 
 void StereoPoseExtractor::prepareVideo(const std::string & path)
 {

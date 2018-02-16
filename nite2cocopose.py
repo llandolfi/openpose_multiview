@@ -47,6 +47,7 @@ def main():
         f.append("p%dx" % i)
         f.append("p%dy" % i)
         f.append("p%dconf" % i)
+        
     out = csv.DictWriter(open(sys.argv[1]+".csv","wb"),delimiter=" ",fields=f)
     out.writeheader()
 

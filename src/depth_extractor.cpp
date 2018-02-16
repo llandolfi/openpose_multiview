@@ -189,7 +189,7 @@ bool DepthExtractor::track()
 
   bool trackerror = true;
 
-  if(cur_frame_ % 5 == 1)
+  if(cur_frame_ % 10 == 1)
   {
     points_[0].clear();
     return false;
@@ -202,7 +202,7 @@ bool DepthExtractor::track()
    mat2Vector(bodypartsL,points_[0]);
   }
 
-  bool nclear = trackLK(prev_gray_, gray_, points_[0], points_[1], 2.0, trackedpnts_);
+  bool nclear = trackLK(prev_gray_, gray_, points_[0], points_[1], 2.5, trackedpnts_);
 
   if(!nclear)
   {
@@ -221,6 +221,7 @@ double DepthExtractor::computeTrackError()
 {
   cv::Mat cam0pnts;
   opArray2Mat(poseKeypointsL_, cam0pnts);
+  
   return computeTrackErrorU(cam0pnts, trackedpnts_);
 }
 

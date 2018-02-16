@@ -58,7 +58,7 @@ std::vector<std::string> CSVTokenize(std::string kpl_str);
 
 void emitCSV(std::ofstream & outputfile, const op::Array<float> & poseKeypoints, int camera, int cur_frame);
 
-void emitCSV3D(std::ofstream & outputfile, const op::Array<float> & poseKeypointsL, int cur_frame, const cv::Mat &points3D);
+void emitCSV3D(std::ofstream & outputfile, const op::Array<float> & poseKeypointsL, int cur_frame, const cv::Mat &points3D, int camera);
 
 void filterVisible(const cv::Mat & pntsL, cv::Mat & nzL);
 
