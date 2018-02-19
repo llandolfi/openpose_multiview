@@ -442,7 +442,14 @@ int main(int argc, char **argv) {
     case 2: 
             std::cout << "Streaming from Kinect 1" << std::endl;
             std::cout << "Using depht " << std::endl;
-            stereoextractor = new DepthExtractor(argc, argv, *dcamera, FLAGS_depth_video);
+            if (FLAGS_ONI)
+            {
+              stereoextractor = new ONIDepthExtractor(argc, argv, *dcamera, FLAGS_depth_video);
+            }
+            else
+            {
+              stereoextractor = new DepthExtractor(argc, argv, *dcamera, FLAGS_depth_video);
+            }
             break;
   }
 

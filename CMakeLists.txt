@@ -110,6 +110,7 @@ if (CUDA_FOUND)
         gflags
         openpose
         jsoncpp
+        opencv_cudastereo
     )
 
     #install library 
