@@ -61,6 +61,8 @@ DEFINE_int32(skip,                       0,             "Number of frame to skip
 
 DEFINE_string(depth_video,                "",           "Path of the depth video file");
 
+DEFINE_bool(ONI,                          true,         "States whether the depth video is from ONI file");
+
 
 PoseExtractor * stereoextractor;
 bool keep_on = true;
@@ -508,9 +510,9 @@ int main(int argc, char **argv) {
     cv::VideoCapture depthcap;
     bool hasdepth = false;
 
-    if(camera_map[FLAGS_camera] == 2)
+    if(camera_map[FLAGS_camera] == 2 && FLAGS_ONI == false)
     {
-      hasdepth = true;
+      hasdepth = true; 
 
       if(FLAGS_depth_video == "")
       {

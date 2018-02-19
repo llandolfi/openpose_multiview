@@ -5,6 +5,12 @@
 #include <math.h>
 #include <bitset>
 #include <sys/mman.h>
+#include "xn16zdec.h"
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <assert.h>
 
 DEFINE_string(kernel_output,              "",      "Path of the kernel output file");
 //DEFINE_bool(ramcip,              false,            "set to true if depth data from ramcip dataset");
@@ -47,7 +53,6 @@ DepthExtractor::DepthExtractor(int argc, char **argv, DepthCamera & camera, cons
   {
     kernelcsv_.open(kernel_output_);
   }
-
 }
 
 void DepthExtractor::finalize()
@@ -264,24 +269,26 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
     confidence = pwithnot.z;
     cv::Point2d keypoint(cvRound(pwithnot.x), cvRound(pwithnot.y));
 
-   // std::cout << "Keypoints " << poseKeypointsL_.toString() << std::endl;
-   // std::cout << "rows: " << depth_.rows << " columns: " << depth_.cols << std::endl;
+    std::cout << "Keypoints " << poseKeypointsL_.toString() << std::endl;
+    std::cout << "rows: " << depth_.rows << " columns: " << depth_.cols << std::endl;
 
-    if(keypoint.x > depth_.cols)
+    if(keypoint.x > depth_.rows)
     {
       std::cout << "Attenzione x " << keypoint.x << std::endl;
-      exit(-1);
+      keypoint.x = (double)depth_.rows;
+     // exit(-1);
     }
 
-    if(keypoint.y > depth_.rows)
+    if(keypoint.y > depth_.cols)
     {
       std::cout << "Attenzione y " << keypoint.y << std::endl;
-      exit(-1);
+      keypoint.y = (double)depth_.cols;
+      //exit(-1);
     }
 
     cv::Mat kernel;
     cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
-                        (double)depth_.at<uint16_t>(keypoint.y, keypoint.x));
+                        (double)depth_.at<uint16_t>(keypoint.x, keypoint.y));
                         //Pool(depth_, keypoint.y, keypoint.x, 7, gaussianAvg, kernel));
 
     //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
@@ -432,25 +439,135 @@ void DepthExtractor::prepareVideo(const std::string & path)
   }
   std::string depthpath = "";
 
-  if (depthpath_ == "")
-  {
-    depthpath = path + "depth.avi";
-  }
-  else
-  {
-    depthpath = depthpath_;
-  }
+    if (depthpath_ == "")
+    {
+      depthpath = path + "depth.avi";
+    }
+    else
+    {
+      depthpath = depthpath_;
+    }
 
-  depthoutput_.open(depthpath,CV_FOURCC('B','G','R','A'), 30, S, true);
+    depthoutput_.open(depthpath,CV_FOURCC('B','G','R','A'), 30, S, true);
 
-  if (!depthoutput_.isOpened())
-  {
-      std::cout  << "Could not open the depth output video for write: " << std::endl;
-      exit(-1);
-  }
+    if (!depthoutput_.isOpened())
+    {
+        std::cout  << "Could not open the depth output video for write: " << std::endl;
+        exit(-1);
+    }
 
   timefile_.open(path + "_timestamps.txt");
   jsonfile_.open(path + ".json"); 
+}
+
+void ONIDepthExtractor::prepareVideo(const std::string & path)
+{
+  cv::Size S = cv::Size(640, 480);
+  outputVideo_.open(path, CV_FOURCC('D','I','V','X'), 30, S, true);
+  if (!outputVideo_.isOpened())
+  {
+      std::cout  << "Could not open the output video for write: " << std::endl;
+      exit(-1);
+  }
+  std::string depthpath = "";
+
+    if (depthpath_ == "")
+    {
+      depthpath = path + "depth.oni";
+    }
+    else
+    {
+      depthpath = depthpath_;
+    }
+
+    out_oni_.open(depthpath,std::ios::binary);
+
+    if (!out_oni_.is_open())
+    {
+        std::cout  << "Could not open the depth output video for write: " << std::endl;
+        exit(-1);
+    }
+
+  timefile_.open(path + "_timestamps.txt");
+  jsonfile_.open(path + ".json"); 
+}
+
+size_t getFilesize(const char* filename) {
+    struct stat st;
+    stat(filename, &st);
+    return st.st_size;
+}
+
+ONIDepthExtractor::ONIDepthExtractor(int argc, char**argv, DepthCamera & camera, const std::string & depth_video) : DepthExtractor(argc,argv,camera,depth_video)
+{
+
+  size_t filesize = getFilesize(depth_video.c_str());
+  //Open file
+  int fd = open(depth_video.c_str(), O_RDONLY, 0);
+  if(fd == -1)
+  {
+    std::cout << "Error opening depth ONI file " << std::endl;
+    exit(-1); 
+  }
+  //Execute mmap
+  void* tmp = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
+
+  if(in_oni_ == MAP_FAILED)
+  {
+    std::cout << "Error opening depth ONI file " << std::endl;
+    exit(-1); 
+  }
+
+  in_oni_ = (uint8_t*)tmp;
+}
+
+/**
+* Converts depth into RGB image for MPEG encoding
+*/
+void ONIDepthExtractor::encodeDepth(const cv::Mat & depth, cv::Mat & output)
+{ 
+  cv::Mat depth_16;
+  std::vector<XnUInt8> depth_compressed(depth.cols * depth.rows * 2);
+  XnUInt32 depth_8_size;
+
+  depth_.convertTo(depth_16, CV_16U);
+  XnStreamCompressDepth16Z((const XnUInt16 *)depth_16.data,
+                                   depth_compressed.size(), depth_compressed.data(),
+                                   &depth_8_size);
+
+  out_oni_.write((const char *)&depth_8_size, 4);
+  out_oni_.write((const char *)depth_compressed.data(), depth_8_size);
+}
+
+/**
+* Decodes an encoded depth frame from kinect
+*/
+void ONIDepthExtractor::decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
+{ 
+  //ignore rgb, use the binary file
+  XnUInt32 nInputSize = 0;
+  std::streampos size;
+
+  XnUInt16 pOutput[rgb.cols*rgb.rows];
+  XnUInt32 pnOutputSize = rgb.cols*rgb.rows;
+
+  //TODO: allocate to_read data
+  //use memcpy
+  std::memcpy(&nInputSize, (void*)in_oni_[pos], sizeof(unsigned int));
+  //in_oni_.read((unsigned char*)&nInputSize, sizeof(unsigned int));
+  pos = pos + sizeof(unsigned int);
+
+  XnUInt8* pInput = (XnUInt8*)malloc(nInputSize);
+
+  std::memcpy(pInput, (void*)in_oni_[pos], nInputSize);
+  pos = pos + nInputSize;
+  //in_oni_.read(pInput,nInputSize);
+
+  XnStatus status = XnStreamUncompressDepth16Z(pInput,nInputSize,pOutput,&pnOutputSize);
+
+  //now must convert to cv::Mat
+  depth = cv::Mat(rgb.rows,rgb.cols,CV_16UC1);
+  depth.data = (unsigned char*)pOutput;
 }
 
 void DepthExtractor::process(const std::string & write_keypoint, bool viz)
@@ -473,6 +590,7 @@ void DepthExtractor::process(const std::string & write_keypoint, bool viz)
     visualize(&keep_on);
   }
 }
+
 
 void DepthExtractor::extract(const ImageFrame & m)
 { 

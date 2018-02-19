@@ -2,7 +2,7 @@
 
 std::string Camera::getResolution()
 {
-  return std::to_string(width_) + "x" + std::to_string(height_);
+  return std::to_string(height_) + "x" + std::to_string(width_);
 }
 
 void PinholeCamera::JSONPoints(const cv::Mat & pnts,Json::Value & points)
@@ -150,8 +150,8 @@ void StereoCamera::setParameters(const std::string & paramfile)
 
 DepthCamera::DepthCamera()
 {
-  width_ = 640;
-  height_ = 480;
+  width_ = 480;
+  height_ = 640;
 
   intrinsics_ = (cv::Mat_<double>(3,3) << 585.187492217609, 0, 322.714077555293, 0, 585.308616340665, 248.626108676666, 0, 0, 1);
 
