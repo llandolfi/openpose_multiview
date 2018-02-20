@@ -61,6 +61,8 @@ DEFINE_int32(skip,                       0,             "Number of frame to skip
 
 DEFINE_string(depth_video,                "",           "Path of the depth video file");
 
+DEFINE_bool(ONI,                          true,         "States whether the depth video is from ONI file");
+
 
 PoseExtractor * stereoextractor;
 bool keep_on = true;
@@ -278,7 +280,7 @@ int startZedStream(Camera & zed)
   /* Locates the first attached UVC device, stores in dev */
   res = uvc_find_device(
       ctx, &dev,
-      0, 0, NULL); /* filter devices: vendor_id, product_id, "serial_num" */
+      0x2b03, 0xf580, NULL); /* filter devices: vendor_id, product_id, "serial_num" */
 
   if (res < 0) {
     uvc_perror(res, "uvc_find_device"); /* no devices found */
@@ -440,7 +442,14 @@ int main(int argc, char **argv) {
     case 2: 
             std::cout << "Streaming from Kinect 1" << std::endl;
             std::cout << "Using depht " << std::endl;
-            stereoextractor = new DepthExtractor(argc, argv, *dcamera, FLAGS_depth_video);
+            if (FLAGS_ONI)
+            {
+              stereoextractor = new ONIDepthExtractor(argc, argv, *dcamera, FLAGS_depth_video);
+            }
+            else
+            {
+              stereoextractor = new DepthExtractor(argc, argv, *dcamera, FLAGS_depth_video);
+            }
             break;
   }
 
@@ -508,9 +517,9 @@ int main(int argc, char **argv) {
     cv::VideoCapture depthcap;
     bool hasdepth = false;
 
-    if(camera_map[FLAGS_camera] == 2)
+    if(camera_map[FLAGS_camera] == 2 && FLAGS_ONI == false)
     {
-      hasdepth = true;
+      hasdepth = true; 
 
       if(FLAGS_depth_video == "")
       {

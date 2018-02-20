@@ -132,6 +132,10 @@ struct DepthExtractor : PoseExtractor {
 
 	virtual void prepareOutputVideo(const std::string & path);
 
+	virtual void encodeDepth(const cv::Mat & depth, cv::Mat & output);
+
+	virtual void decodeDepth(const cv::Mat & rgb, cv::Mat & depth);
+
 	void finalize();
 
 	double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D);
@@ -143,10 +147,6 @@ struct DepthExtractor : PoseExtractor {
 	std::string pnts2JSON(const cv::Mat & pnts, int frame, const std::string & time);
 
 	void kernel2CSV(int idx, const cv::Mat & kernel);
-
-	void encodeDepth(const cv::Mat & depth, cv::Mat & output);
-
-	void decodeDepth(const cv::Mat & rgb, cv::Mat & depth);
 
 	double computeTrackError();
 
@@ -160,10 +160,28 @@ struct DepthExtractor : PoseExtractor {
 
 	std::string kernel_output_;
 	std::ofstream kernelcsv_;
+	
 
 	DepthCamera cam_;
 
 	bool fframe_ = true;
+};
+
+struct ONIDepthExtractor : DepthExtractor {
+
+	ONIDepthExtractor(int argc, char**argv, DepthCamera & camera, const std::string & depth_video);
+
+	void encodeDepth(const cv::Mat & depth, cv::Mat & output);
+
+	void decodeDepth(const cv::Mat & rgb, cv::Mat & depth);
+
+	void prepareVideo(const std::string & path);
+
+	std::ofstream out_oni_;
+	uint8_t* in_oni_;
+
+	uint64_t pos = 0;
+
 };
 
 

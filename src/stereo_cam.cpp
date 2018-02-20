@@ -150,8 +150,8 @@ void StereoCamera::setParameters(const std::string & paramfile)
 
 DepthCamera::DepthCamera()
 {
-  width_ = 640;
-  height_ = 480;
+  width_ = 480;
+  height_ = 640;
 
   intrinsics_ = (cv::Mat_<double>(3,3) << 585.187492217609, 0, 322.714077555293, 0, 585.308616340665, 248.626108676666, 0, 0, 1);
 
@@ -166,6 +166,11 @@ DepthCamera::DepthCamera(const std::string params_path)
   height_ = fs["image_height"];
   width_ = fs["image_width"];
 
+}
+
+std::string DepthCamera::getResolution()
+{
+  return std::to_string(height_) + "x" + std::to_string(width_);
 }
 
 void DepthCamera::dump()

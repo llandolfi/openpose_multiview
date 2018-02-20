@@ -61,6 +61,8 @@ struct DepthCamera : PinholeCamera{
 
 	void dump();
 
+	std::string getResolution();
+
 
 };
 
