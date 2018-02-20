@@ -2,7 +2,7 @@
 
 std::string Camera::getResolution()
 {
-  return std::to_string(height_) + "x" + std::to_string(width_);
+  return std::to_string(width_) + "x" + std::to_string(height_);
 }
 
 void PinholeCamera::JSONPoints(const cv::Mat & pnts,Json::Value & points)
@@ -166,6 +166,11 @@ DepthCamera::DepthCamera(const std::string params_path)
   height_ = fs["image_height"];
   width_ = fs["image_width"];
 
+}
+
+std::string DepthCamera::getResolution()
+{
+  return std::to_string(height_) + "x" + std::to_string(width_);
 }
 
 void DepthCamera::dump()
