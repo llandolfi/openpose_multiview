@@ -177,6 +177,10 @@ struct ONIDepthExtractor : DepthExtractor {
 
 	void prepareVideo(const std::string & path);
 
+	void appendFrame(const ImageFrame & myframe);
+
+	void extract(const ImageFrame & m);
+
 	std::ofstream out_oni_;
 	uint8_t* in_oni_;
 

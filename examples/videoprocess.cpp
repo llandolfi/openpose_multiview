@@ -406,7 +406,7 @@ int main(int argc, char **argv) {
     case 0: 
             std::cout << "Streaming from ZED" << std::endl;
             scamera = new ZED(FLAGS_resolution);
-            scamera->fps_ = FLAGS_fps; 
+            scamera->fps_ = std::min(scamera->fps_, FLAGS_fps); 
 
             if(FLAGS_disparity == true)
             {

@@ -77,6 +77,7 @@ std::string DepthExtractor::pnts2JSON(const cv::Mat & pnts, int frame, const std
     points.append(jpoint);
   }
 
+  //cam_->JSONPoints(pnts,points);
   
   colors["r"] = 1.0;
   colors["g"] = 0;
@@ -267,27 +268,27 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
 
     cv::Point3d pwithnot = cam0pnts.at<cv::Point3d>(0,i);
     confidence = pwithnot.z;
-    cv::Point2d keypoint(cvRound(pwithnot.x), cvRound(pwithnot.y));
+    cv::Point2d keypoint(cvRound(pwithnot.y), cvRound(pwithnot.x));
 
-    std::cout << "Keypoints " << poseKeypointsL_.toString() << std::endl;
-    std::cout << "rows: " << depth_.rows << " columns: " << depth_.cols << std::endl;
+    ///std::cout << "Keypoints " << poseKeypointsL_.toString() << std::endl;
+    //std::cout << "rows: " << depth_.rows << " columns: " << depth_.cols << std::endl;
 
     if(keypoint.x > depth_.rows)
     {
       std::cout << "Attenzione x " << keypoint.x << std::endl;
-      keypoint.x = (double)depth_.rows;
-     // exit(-1);
+      keypoint.x = (double)depth_.rows-1.0;
+      //exit(-1);
     }
 
     if(keypoint.y > depth_.cols)
     {
       std::cout << "Attenzione y " << keypoint.y << std::endl;
-      keypoint.y = (double)depth_.cols;
+      keypoint.y = (double)depth_.cols-1.0;
       //exit(-1);
     }
 
     cv::Mat kernel;
-    cv::Point3d point = getPointFromDepth(keypoint.y,keypoint.x,
+    cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
                         (double)depth_.at<uint16_t>(keypoint.x, keypoint.y));
                         //Pool(depth_, keypoint.y, keypoint.x, 7, gaussianAvg, kernel));
 
@@ -415,6 +416,21 @@ void DepthExtractor::appendFrame(const ImageFrame & myframe)
 }
 
 
+void ONIDepthExtractor::appendFrame(const ImageFrame & myframe)
+{
+
+ outputVideo_ << myframe.color_;
+ 
+ //convert depth in normal codec: from single channel 16 bit 
+ //cv::Mat depthtosave;
+
+ cv::Mat depthtosave;
+ encodeDepth(myframe.depth_, depthtosave);
+
+ timefile_ << std::to_string(myframe.time_stamp_.count()) << "\n";
+}
+
+
 void DepthExtractor::prepareOutputVideo(const std::string & path)
 {
   //TODO: parse resolution from instance fields
@@ -500,25 +516,27 @@ size_t getFilesize(const char* filename) {
 
 ONIDepthExtractor::ONIDepthExtractor(int argc, char**argv, DepthCamera & camera, const std::string & depth_video) : DepthExtractor(argc,argv,camera,depth_video)
 {
-
-  size_t filesize = getFilesize(depth_video.c_str());
-  //Open file
-  int fd = open(depth_video.c_str(), O_RDONLY, 0);
-  if(fd == -1)
+  if(depth_video != "")
   {
-    std::cout << "Error opening depth ONI file " << std::endl;
-    exit(-1); 
-  }
-  //Execute mmap
-  void* tmp = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
+    size_t filesize = getFilesize(depth_video.c_str());
+    //Open file
+    int fd = open(depth_video.c_str(), O_RDONLY, 0);
+    if(fd == -1)
+    {
+      std::cout << "Error opening depth ONI file " << std::endl;
+      exit(-1); 
+    }
+    //Execute mmap
+    void* tmp = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
 
-  if(in_oni_ == MAP_FAILED)
-  {
-    std::cout << "Error opening depth ONI file " << std::endl;
-    exit(-1); 
-  }
+    if(in_oni_ == MAP_FAILED)
+    {
+      std::cout << "Error opening depth ONI file " << std::endl;
+      exit(-1); 
+    }
 
-  in_oni_ = (uint8_t*)tmp;
+    in_oni_ = (uint8_t*)tmp;
+  }
 }
 
 /**
@@ -526,14 +544,17 @@ ONIDepthExtractor::ONIDepthExtractor(int argc, char**argv, DepthCamera & camera,
 */
 void ONIDepthExtractor::encodeDepth(const cv::Mat & depth, cv::Mat & output)
 { 
-  cv::Mat depth_16;
+
+  //cv::Mat depth_16(cv::Size(depth.rows,depth.cols),CV_16U);
   std::vector<XnUInt8> depth_compressed(depth.cols * depth.rows * 2);
   XnUInt32 depth_8_size;
 
-  depth_.convertTo(depth_16, CV_16U);
-  XnStreamCompressDepth16Z((const XnUInt16 *)depth_16.data,
+  //depth.convertTo(depth_16, CV_16U);
+  XnStatus status = XnStreamCompressDepth16Z((const XnUInt16 *)depth.data,
                                    depth_compressed.size(), depth_compressed.data(),
                                    &depth_8_size);
+
+  //std::cout << status << std::endl;
 
   out_oni_.write((const char *)&depth_8_size, 4);
   out_oni_.write((const char *)depth_compressed.data(), depth_8_size);
@@ -549,25 +570,41 @@ void ONIDepthExtractor::decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
   std::streampos size;
 
   XnUInt16 pOutput[rgb.cols*rgb.rows];
-  XnUInt32 pnOutputSize = rgb.cols*rgb.rows;
+  XnUInt32 pnOutputSize = rgb.cols*rgb.rows*2;
 
   //TODO: allocate to_read data
   //use memcpy
-  std::memcpy(&nInputSize, (void*)in_oni_[pos], sizeof(unsigned int));
+  std::memcpy(&nInputSize, (&in_oni_[pos]), sizeof(XnUInt32));
+
   //in_oni_.read((unsigned char*)&nInputSize, sizeof(unsigned int));
-  pos = pos + sizeof(unsigned int);
+  pos = pos + sizeof(XnUInt32);
 
   XnUInt8* pInput = (XnUInt8*)malloc(nInputSize);
 
-  std::memcpy(pInput, (void*)in_oni_[pos], nInputSize);
+  std::memcpy(pInput, (&in_oni_[pos]), nInputSize);
   pos = pos + nInputSize;
   //in_oni_.read(pInput,nInputSize);
 
   XnStatus status = XnStreamUncompressDepth16Z(pInput,nInputSize,pOutput,&pnOutputSize);
 
+  //std::cout << rgb.cols << " " << rgb.rows << std::endl;
+  //std::cout << status << std::endl;
+  //exit(-1);
+
   //now must convert to cv::Mat
   depth = cv::Mat(rgb.rows,rgb.cols,CV_16UC1);
   depth.data = (unsigned char*)pOutput;
+
+  /*cv::namedWindow("mah", CV_WINDOW_AUTOSIZE);
+  cv::imshow("mah", depth);
+
+  short k = cvWaitKey(2);
+  if (k == 27)
+  {
+      exit(-1);
+  }*/
+
+
 }
 
 void DepthExtractor::process(const std::string & write_keypoint, bool viz)
@@ -612,6 +649,31 @@ void DepthExtractor::extract(const ImageFrame & m)
 
   cur_frame_ = cur_frame_ + skip_ + 1;
 }
+
+void ONIDepthExtractor::extract(const ImageFrame & m)
+{ 
+
+  RGB_ = m.color_;
+
+  if(live_)
+  {
+    depth_ = m.depth_; 
+  }
+  else
+  {
+    cv::Mat tmp;
+    decodeDepth(RGB_, tmp);
+    depth_ = tmp;
+  }
+
+  if(tracking2D_)
+  {
+    cv::cvtColor(RGB_, gray_, CV_BGR2GRAY);
+  }
+
+  cur_frame_ = cur_frame_ + skip_ + 1;
+}
+
 
 
 void DepthExtractor::visualize(bool* keep_on)

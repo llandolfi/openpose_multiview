@@ -160,6 +160,7 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
   bool tracked = false; 
 
   extract(image);
+  //std::cout << "extracted " << std::endl;
 
   //Trackable if previous frame was detection or no error in previous tracking
   if(tracking2D_)
@@ -184,8 +185,9 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
       //std::cout << "tracking error on 2D points " << t_err <<"\n";
     }
   }
-
+  //std::cout << "processed " << std::endl;
   error = triangulate(points3D);
+  //std::cout << "triangulated "<< std::endl;
 
   if(FLAGS_udp_port != 0)
   {

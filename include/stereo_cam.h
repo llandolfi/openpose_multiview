@@ -59,6 +59,8 @@ struct DepthCamera : PinholeCamera{
 	DepthCamera();
 	DepthCamera(const std::string params_path);
 
+	//void JSONPoints(const cv::Mat & pnts,Json::Value & points);
+
 	void dump();
 
 	std::string getResolution();
