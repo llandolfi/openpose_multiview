@@ -47,8 +47,6 @@ int main( int argc, char** argv )
       if(!RGB.empty())
       {
 
-
-
         Payload * data = new Payload(640,480);
 
         data = pc.writerGet();

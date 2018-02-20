@@ -3,7 +3,13 @@ cmake_minimum_required( VERSION 2.8 )
 project( StereoPose )
 
 add_definitions(--std=c++11)
+
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
+
+find_package(Freenect2 REQUIRED)
+
 include_directories(/usr/include/jsoncpp)
+
 find_package(OpenMP)
 if (OPENMP_FOUND) 
 
@@ -77,6 +83,8 @@ include_directories(${FREENECT_GRABBER_INCLUDE_DIR} )
 
 find_package( OpenCV REQUIRED )
 
+include_directories(${FREENECT2_INCLUDE_DIRS})
+
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 find_package( Boost REQUIRED COMPONENTS program_options thread system)
@@ -124,6 +132,7 @@ if (CUDA_FOUND)
     ADD_EXECUTABLE( stereopose_rt examples/videoprocess.cpp )
     ADD_EXECUTABLE( stereopose_of examples/fileprocess.cpp )
     ADD_EXECUTABLE( k1server examples/kinect1server.cpp )
+    ADD_EXECUTABLE( k2server examples/kinect2server.cpp )
 
     TARGET_LINK_LIBRARIES(stereopose_rt
         stereoutils
@@ -136,6 +145,13 @@ if (CUDA_FOUND)
 
     TARGET_LINK_LIBRARIES(k1server
       ${FREENECT_LIBRARY}   
+      ${OpenCV_LIBS}
+      ${Boost_LIBRARIES}
+      rt
+    )
+
+    TARGET_LINK_LIBRARIES(k2server
+      ${FREENECT2_LIBRARY}
       ${OpenCV_LIBS}
       ${Boost_LIBRARIES}
       rt
