@@ -102,7 +102,7 @@ PoseExtractor::PoseExtractor(int argc, char **argv, Camera & camera) : udpstream
   const bool enableGoogleLogging = true;
   // Step 2 - Read Google flags (user defined configuration)
   // outputSize
-  const auto outputSize = op::flagsToPoint(camera.getResolution(), "1280x720");
+  const auto outputSize = op::flagsToPoint(camera.getResolution(), "1920x1080");
   // netInputSize
   const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "640x480");
   // netOutputSize
@@ -200,8 +200,8 @@ double PoseExtractor::go(const ImageFrame & image, const bool ver, cv::Mat & poi
 
   if(FLAGS_write_keypoint3D != "")
   {
-    outputPoints(points3D);
-    //emitCSV3D(outputfile3D_, poseKeypointsL_, cur_frame_, points3D);
+    //outputPoints(points3D);
+    emitCSV3D(outputfile3D_, poseKeypointsL_, cur_frame_, points3D, 0);
   }
 
 

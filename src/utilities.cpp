@@ -158,16 +158,17 @@ void getConfidences(const op::Array<float> & poseKeypoints, std::vector<float> &
 *Produces a CSV string representing 3D body points in a single frame
 */
 void emitCSV3D(std::ofstream & outputfile, const op::Array<float> & poseKeypointsL, int cur_frame, const cv::Mat &points3D, int camera)
-{
+{   
    std::string kp_str = poseKeypointsL.toString();
    std::vector<std::string> tokens = CSVTokenize(kp_str);
 
    std::vector<float> confidences;
+   //std::cout << points3D << std::endl;
    //getConfidences(poseKeypointsL,confidences);
 
    //if no person detected, output 54 zeros
-   if (tokens.size() == 0)
-   {
+   if (points3D.empty())
+   {  
      outputfile << camera << " " << cur_frame << " " << 0 << " ";
      for (int j = 0; j < 54; j++)
      {
