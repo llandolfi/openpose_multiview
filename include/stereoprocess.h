@@ -136,6 +136,8 @@ struct DepthExtractor : PoseExtractor {
 
 	virtual void decodeDepth(const cv::Mat & rgb, cv::Mat & depth);
 
+	virtual double getDepthPoint(int x, int y);
+
 	void finalize();
 
 	double getRMS(const cv::Mat & cam0pnts, const cv::Mat & pnts3D);
@@ -186,6 +188,20 @@ struct ONIDepthExtractor : DepthExtractor {
 
 	uint64_t pos = 0;
 
+};
+
+struct Depth2Extractor : DepthExtractor {
+
+	Depth2Extractor(int argc, char**argv, DepthCamera & camera, const std::string & depth_video);
+
+	double getDepthPoint(int x, int y);
+};
+
+struct ONIDepth2Extractor : ONIDepthExtractor {
+
+	ONIDepth2Extractor(int argc, char**argv, DepthCamera & camera, const std::string & depth_video);
+
+	double getDepthPoint(int x, int y);
 };
 
 

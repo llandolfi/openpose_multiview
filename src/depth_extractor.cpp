@@ -55,6 +55,15 @@ DepthExtractor::DepthExtractor(int argc, char **argv, DepthCamera & camera, cons
   }
 }
 
+Depth2Extractor::Depth2Extractor(int argc, char **argv, DepthCamera & camera, const std::string & depth_video) : 
+  DepthExtractor(argc, argv, camera, depth_video)
+{}
+
+ONIDepth2Extractor::ONIDepth2Extractor(int argc, char **argv, DepthCamera & camera, const std::string & depth_video) : 
+  ONIDepthExtractor(argc, argv, camera, depth_video)
+{}
+
+
 void DepthExtractor::finalize()
 {
 
@@ -231,6 +240,11 @@ double DepthExtractor::computeTrackError()
   return computeTrackErrorU(cam0pnts, trackedpnts_);
 }
 
+double DepthExtractor::getDepthPoint(int x, int y)
+{
+  return (double)depth_.at<uint16_t>(x, y); 
+}
+
 double DepthExtractor::triangulate(cv::Mat & finalpoints)
 { 
 
@@ -273,23 +287,24 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
     ///std::cout << "Keypoints " << poseKeypointsL_.toString() << std::endl;
     //std::cout << "rows: " << depth_.rows << " columns: " << depth_.cols << std::endl;
 
-    if(keypoint.x > depth_.rows)
+    if(keypoint.x > RGB_.rows)
     {
       std::cout << "Attenzione x " << keypoint.x << std::endl;
-      keypoint.x = (double)depth_.rows-1.0;
+      keypoint.x = (double)RGB_.rows-1.0;
       //exit(-1);
     }
 
-    if(keypoint.y > depth_.cols)
+    if(keypoint.y > RGB_.cols)
     {
       std::cout << "Attenzione y " << keypoint.y << std::endl;
-      keypoint.y = (double)depth_.cols-1.0;
+      keypoint.y = (double)RGB_.cols-1.0;
       //exit(-1);
     }
 
     cv::Mat kernel;
     cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
-                        (double)depth_.at<uint16_t>(keypoint.x, keypoint.y));
+                        getDepthPoint(keypoint.x, keypoint.y));
+                        //(double)depth_.at<uint16_t>(keypoint.x, keypoint.y));
                         //Pool(depth_, keypoint.y, keypoint.x, 7, gaussianAvg, kernel));
 
     //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
@@ -739,3 +754,22 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
     cv:imwrite("../data/3Dpoints.jpg", verification);
   }
 }
+
+double K2depthPoint(int col_x, int col_y, const cv::Mat & depth, const cv::Mat & RGB)
+{
+  int d_x = depth.cols * col_x / RGB.cols;
+  int d_y = depth.rows * col_y / RGB.rows;
+
+  return (double)depth.at<uint16_t>(d_x, d_y); 
+}
+
+double Depth2Extractor::getDepthPoint(int x, int y)
+{
+  return K2depthPoint(x,y,depth_,RGB_); 
+}
+
+double ONIDepth2Extractor::getDepthPoint(int x, int y)
+{
+  return K2depthPoint(x,y,depth_,RGB_);
+}
+

@@ -33,3 +33,33 @@ struct Payload
    std::chrono::milliseconds time_;
    uint frame_;
 };
+
+struct K2Payload
+{  
+
+   uint getRGBSize()
+   {
+      return 1920 * 1080 * 4;
+   }
+
+   uint getDepthSize()
+   {
+      return 512 * 424 * 2;
+   }
+
+
+
+   //Put here the payload
+   unsigned char RGB[1920 * 1080 * 4];
+   unsigned char depth[424 * 512 * 2];
+
+   int color_width_ = 1920;
+   int color_height_ = 1080;
+
+   int depth_width = 512;
+   int depth_height = 424;
+
+   std::chrono::milliseconds time_;
+   uint frame_;
+};
+

@@ -391,6 +391,45 @@ void startK1Stream()
   //DO not remove shared memory, server is in charge
 }
 
+void startK2Stream()
+{
+  using namespace boost::interprocess;
+
+  std::cout << "k2 client Ready" << std::endl;
+
+  IPCPooledChannel<K2Payload> pc("kinect2",ReaderTag(),ReadOrderPolicy::Ordered);
+
+  while (keep_on)
+  {
+   
+    K2Payload * data;
+
+    pc.readerGet(data);
+
+    cv::Mat RGB(1080,1920,CV_8UC4);
+    cv::Mat depth(424,512,CV_16UC1);
+
+    //Problem: is it possible to read corrupted data? 
+    RGB.data = static_cast<uchar*>(data->RGB);
+    depth.data = static_cast<uchar*>(data->depth);
+    std::chrono::milliseconds time = data->time_;
+
+    pc.readerDone(data);
+    
+    cv::cvtColor(RGB, RGB, cv::COLOR_BGRA2BGR);
+
+    //TODO: publish on the  interthread channel
+    std::shared_ptr<ImageFrame> myframe = std::make_shared<ImageFrame>();
+    myframe->color_ = RGB;
+    myframe->depth_ = depth;
+    myframe->time_stamp_ = time;
+
+    pc_camera.write(myframe);
+  
+  }
+  //DO not remove shared memory, server is in charge
+}
+
 int main(int argc, char **argv) {
 
   // Parsing command line flags
@@ -400,6 +439,11 @@ int main(int argc, char **argv) {
 
   StereoCamera * scamera;
   DepthCamera * dcamera = new DepthCamera();
+
+  if (camera_map[FLAGS_camera] == 3)
+  {
+    dcamera = new Kinect2();
+  }
 
   switch(camera_map[FLAGS_camera])
   {
@@ -451,6 +495,19 @@ int main(int argc, char **argv) {
               stereoextractor = new DepthExtractor(argc, argv, *dcamera, FLAGS_depth_video);
             }
             break;
+
+    case 3: 
+            std::cout << "Streaming from Kinect 2" << std::endl;
+            std::cout << "Using depht " << std::endl;
+            if (FLAGS_ONI)
+            {
+              stereoextractor = new ONIDepth2Extractor(argc, argv, *dcamera, FLAGS_depth_video);
+            }
+            else
+            {
+              stereoextractor = new Depth2Extractor(argc, argv, *dcamera, FLAGS_depth_video);
+            }
+            break;
   }
 
 
@@ -488,6 +545,12 @@ int main(int argc, char **argv) {
               //producer = new std::thread(startK1Stream);
               startK1Stream();
               break;
+
+      case 3:
+             //producer = new std::thread(startK2Stream);
+            startK2Stream();
+            break;
+
       default:
               std::cout << "NO DEFAULT CASE" << std::endl;
               exit(-1); 

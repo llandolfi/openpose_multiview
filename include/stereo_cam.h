@@ -68,6 +68,13 @@ struct DepthCamera : PinholeCamera{
 
 };
 
+struct Kinect2 : DepthCamera{
+
+	Kinect2();
+
+	std::string getResolution();
+};
+
 
 struct StereoCamera : Camera {
 
