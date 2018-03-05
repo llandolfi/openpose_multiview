@@ -287,7 +287,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
     ///std::cout << "Keypoints " << poseKeypointsL_.toString() << std::endl;
     //std::cout << "rows: " << depth_.rows << " columns: " << depth_.cols << std::endl;
 
-    if(keypoint.x > RGB_.rows)
+    /*if(keypoint.x > RGB_.rows)
     {
       std::cout << "Attenzione x " << keypoint.x << std::endl;
       keypoint.x = (double)RGB_.rows-1.0;
@@ -299,7 +299,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
       std::cout << "Attenzione y " << keypoint.y << std::endl;
       keypoint.y = (double)RGB_.cols-1.0;
       //exit(-1);
-    }
+    }*/
 
     cv::Mat kernel;
     cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
@@ -308,6 +308,8 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
                         //Pool(depth_, keypoint.y, keypoint.x, 7, gaussianAvg, kernel));
 
     //uint16_t ddepth = depth_.at<uint16_t>(keypoint.y, keypoint.x);
+
+   //std::cout << "depth: " << point.z  << std::endl;
 
     if(FLAGS_kernel_output != "")// && i/18 == mc)
     {
@@ -418,6 +420,9 @@ void DepthExtractor::appendFrame(const ImageFrame & myframe)
 {
 
  outputVideo_ << myframe.color_;
+
+ //try to show myframe.color
+
  
  //convert depth in normal codec: from single channel 16 bit 
  //cv::Mat depthtosave;
@@ -435,7 +440,16 @@ void ONIDepthExtractor::appendFrame(const ImageFrame & myframe)
 {
 
  outputVideo_ << myframe.color_;
- 
+
+  /*cv::namedWindow("mah", CV_WINDOW_AUTOSIZE);
+  cv::imshow("mah", myframe.color_);
+
+  short k = cvWaitKey(2);
+  if (k == 27)
+  {
+      exit(-1);
+  }
+  */
  //convert depth in normal codec: from single channel 16 bit 
  //cv::Mat depthtosave;
 
@@ -449,7 +463,7 @@ void ONIDepthExtractor::appendFrame(const ImageFrame & myframe)
 void DepthExtractor::prepareOutputVideo(const std::string & path)
 {
   //TODO: parse resolution from instance fields
-  cv::Size S = cv::Size(640, 480);
+  cv::Size S = cv::Size(cam_.getWidth(), cam_.getHeight());
   poseVideo_.open(path, CV_FOURCC('D','I','V','X'), 10, S, true);
   if (!poseVideo_.isOpened())
   {
@@ -460,8 +474,8 @@ void DepthExtractor::prepareOutputVideo(const std::string & path)
 
 void DepthExtractor::prepareVideo(const std::string & path)
 {
-
-  cv::Size S = cv::Size(640, 480);
+  cv::Size S = cv::Size(cam_.getWidth(), cam_.getHeight());
+  //cv::Size S = cv::Size(640, 480);
   outputVideo_.open(path, CV_FOURCC('D','I','V','X'), 30, S, true);
   if (!outputVideo_.isOpened())
   {
@@ -493,7 +507,8 @@ void DepthExtractor::prepareVideo(const std::string & path)
 
 void ONIDepthExtractor::prepareVideo(const std::string & path)
 {
-  cv::Size S = cv::Size(640, 480);
+  cv::Size S = cv::Size(cam_.getHeight(), cam_.getWidth());
+
   outputVideo_.open(path, CV_FOURCC('D','I','V','X'), 30, S, true);
   if (!outputVideo_.isOpened())
   {
@@ -560,12 +575,15 @@ ONIDepthExtractor::ONIDepthExtractor(int argc, char**argv, DepthCamera & camera,
 void ONIDepthExtractor::encodeDepth(const cv::Mat & depth, cv::Mat & output)
 { 
 
-  //cv::Mat depth_16(cv::Size(depth.rows,depth.cols),CV_16U);
+  cv::Mat depth_16(cv::Size(depth.rows,depth.cols),CV_16U);
+  depth.convertTo(depth_16, CV_16U);
+
+
   std::vector<XnUInt8> depth_compressed(depth.cols * depth.rows * 2);
   XnUInt32 depth_8_size;
 
   //depth.convertTo(depth_16, CV_16U);
-  XnStatus status = XnStreamCompressDepth16Z((const XnUInt16 *)depth.data,
+  XnStatus status = XnStreamCompressDepth16Z((const XnUInt16 *)depth_16.data,
                                    depth_compressed.size(), depth_compressed.data(),
                                    &depth_8_size);
 
@@ -609,6 +627,11 @@ void ONIDepthExtractor::decodeDepth(const cv::Mat & rgb, cv::Mat & depth)
   //now must convert to cv::Mat
   depth = cv::Mat(rgb.rows,rgb.cols,CV_16UC1);
   depth.data = (unsigned char*)pOutput;
+
+  cv::Mat depth_16(cv::Size(depth.rows,depth.cols),CV_32FC1);
+  depth.convertTo(depth_16, CV_32FC1);
+
+  depth = depth_16;
 
   /*cv::namedWindow("mah", CV_WINDOW_AUTOSIZE);
   cv::imshow("mah", depth);
@@ -760,7 +783,11 @@ double K2depthPoint(int col_x, int col_y, const cv::Mat & depth, const cv::Mat &
   int d_x = depth.cols * col_x / RGB.cols;
   int d_y = depth.rows * col_y / RGB.rows;
 
-  return (double)depth.at<uint16_t>(d_x, d_y); 
+  float tmp = depth.at<float>(d_x, d_y);
+
+  //std::cout << tmp << std::endl;
+
+  return (double)tmp; 
 }
 
 double Depth2Extractor::getDepthPoint(int x, int y)

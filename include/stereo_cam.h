@@ -59,6 +59,9 @@ struct DepthCamera : PinholeCamera{
 	DepthCamera();
 	DepthCamera(const std::string params_path);
 
+	virtual int getWidth();
+	virtual int getHeight();
+
 	//void JSONPoints(const cv::Mat & pnts,Json::Value & points);
 
 	void dump();
@@ -73,6 +76,10 @@ struct Kinect2 : DepthCamera{
 	Kinect2();
 
 	std::string getResolution();
+
+	int getWidth();
+	int getHeight();
+
 };
 
 

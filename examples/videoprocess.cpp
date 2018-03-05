@@ -407,7 +407,7 @@ void startK2Stream()
     pc.readerGet(data);
 
     cv::Mat RGB(1080,1920,CV_8UC4);
-    cv::Mat depth(424,512,CV_16UC1);
+    cv::Mat depth(424,512,CV_32FC1);
 
     //Problem: is it possible to read corrupted data? 
     RGB.data = static_cast<uchar*>(data->RGB);

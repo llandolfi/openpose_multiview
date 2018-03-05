@@ -44,14 +44,14 @@ struct K2Payload
 
    uint getDepthSize()
    {
-      return 512 * 424 * 2;
+      return 512 * 424 * sizeof(double);
    }
 
 
 
    //Put here the payload
    unsigned char RGB[1920 * 1080 * 4];
-   unsigned char depth[424 * 512 * 2];
+   unsigned char depth[424 * 512 * 4];
 
    int color_width_ = 1920;
    int color_height_ = 1080;

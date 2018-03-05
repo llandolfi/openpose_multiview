@@ -154,16 +154,16 @@ DepthCamera::DepthCamera()
   height_ = 640;
 
   intrinsics_ = (cv::Mat_<double>(3,3) << 585.187492217609, 0, 322.714077555293, 0, 585.308616340665, 248.626108676666, 0, 0, 1);
-
 }
 
-Kinect2::Kinect2()
+int DepthCamera::getWidth()
 {
-  width_ = 1920;
-  height_ = 1080;
+  return height_;
+}
 
-  intrinsics_ = (cv::Mat_<double>(3,3) << 1039.7114637900604, 0.0, 937.6437462083773, 0.0, 1040.464051222892, 526.146628446275,0.0,0.0,1.0);
-
+int DepthCamera::getHeight()
+{
+  return width_;
 }
 
 DepthCamera::DepthCamera(const std::string params_path)
@@ -188,9 +188,27 @@ void DepthCamera::dump()
   std::cout << intrinsics_ << std::endl;
 }
 
+Kinect2::Kinect2()
+{
+  width_ = 1920;
+  height_ = 1080;
+
+  intrinsics_ = (cv::Mat_<double>(3,3) << 1039.7114637900604, 0.0, 937.6437462083773, 0.0, 1040.464051222892, 526.146628446275,0.0,0.0,1.0);
+}
+
 std::string Kinect2::getResolution()
 {
   return std::to_string(width_) + "x" + std::to_string(height_);
+}
+
+int Kinect2::getHeight()
+{
+  return height_;
+}
+
+int Kinect2::getWidth()
+{
+  return width_;
 }
 
 

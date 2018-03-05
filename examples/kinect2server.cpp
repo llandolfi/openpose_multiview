@@ -40,8 +40,6 @@ int main(int argc, char * argv[])
 
     k2g.get(color, depth);
 
-    cv::Mat depth_16(cv::Size(depth.rows,depth.cols),CV_16U);
-
     std::cout << "color.rows " << color.rows << " color.cols " << color.cols << std::endl;
     std::cout << "depth.rows " << depth.rows << " depth.cols " << depth.cols << " depth.channels " << depth.channels() <<std::endl;
 
@@ -54,10 +52,15 @@ int main(int argc, char * argv[])
 
       cur_frame ++;
 
-      depth.convertTo(depth_16, CV_16U);
+      //depth.convertTo(depth_16, CV_16U);
 
-      memcpy(data->RGB, color.data, (1920*1080*4)*sizeof(uint8_t));
-      memcpy(data->depth, depth_16.data, (512*424)*sizeof(uint16_t));
+      //data->RGB = color.data;
+      //data->depth = depth_16.data;
+
+      memmove(data->RGB, color.data, (1920*1080*4)*sizeof(uint8_t));
+
+      memmove(data->depth, depth.data, (512*424)*4);
+
 
       data->frame_ = cur_frame;
 
@@ -65,17 +68,6 @@ int main(int argc, char * argv[])
 
       pc.writerDone(data);
     
-    }
-
-
-    // Showing only color since depth is float and needs conversion
-    /*cv::namedWindow("depth", CV_WINDOW_AUTOSIZE);
-    cv::imshow("depth", depth_16); */
-    int c = cv::waitKey(2);
-
-    if (c == 27)
-    {
-      to_stop = true;
     }
 
   }
