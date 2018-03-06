@@ -287,7 +287,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
     ///std::cout << "Keypoints " << poseKeypointsL_.toString() << std::endl;
     //std::cout << "rows: " << depth_.rows << " columns: " << depth_.cols << std::endl;
 
-    /*if(keypoint.x > RGB_.rows)
+    if(keypoint.x > RGB_.rows)
     {
       std::cout << "Attenzione x " << keypoint.x << std::endl;
       keypoint.x = (double)RGB_.rows-1.0;
@@ -299,7 +299,7 @@ double DepthExtractor::triangulate(cv::Mat & finalpoints)
       std::cout << "Attenzione y " << keypoint.y << std::endl;
       keypoint.y = (double)RGB_.cols-1.0;
       //exit(-1);
-    }*/
+    }
 
     cv::Mat kernel;
     cv::Point3d point = getPointFromDepth(keypoint.x,keypoint.y,
@@ -780,11 +780,13 @@ void DepthExtractor::verify(const cv::Mat & pnts, bool* keep_on)
 
 double K2depthPoint(int col_x, int col_y, const cv::Mat & depth, const cv::Mat & RGB)
 {
-  int d_x = depth.cols * col_x / RGB.cols;
-  int d_y = depth.rows * col_y / RGB.rows;
+  //int d_x = depth.cols * col_x / RGB.cols;
+  //int d_y = depth.rows * col_y / RGB.rows;
 
-  float tmp = depth.at<float>(d_x, d_y);
+  float tmp = depth.at<float>(col_x, col_y);
 
+  //be sure that the depth points are consistent
+  //cv::circle(depth,cv::Point2d(d_x,d_y),3,cv::Scalar(255,255,255),5);
   //std::cout << tmp << std::endl;
 
   return (double)tmp; 

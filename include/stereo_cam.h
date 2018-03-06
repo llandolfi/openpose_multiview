@@ -73,7 +73,7 @@ struct DepthCamera : PinholeCamera{
 
 struct Kinect2 : DepthCamera{
 
-	Kinect2();
+	Kinect2(bool full_hd = true);
 
 	std::string getResolution();
 

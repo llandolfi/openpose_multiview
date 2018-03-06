@@ -38,7 +38,7 @@ int main(int argc, char * argv[])
 
   while(!to_stop){
 
-    k2g.get(color, depth);
+    k2g.get(color, depth, false);
 
     std::cout << "color.rows " << color.rows << " color.cols " << color.cols << std::endl;
     std::cout << "depth.rows " << depth.rows << " depth.cols " << depth.cols << " depth.channels " << depth.channels() <<std::endl;
@@ -57,7 +57,7 @@ int main(int argc, char * argv[])
       //data->RGB = color.data;
       //data->depth = depth_16.data;
 
-      memmove(data->RGB, color.data, (1920*1080*4)*sizeof(uint8_t));
+      memmove(data->RGB, color.data, (512*424*4)*sizeof(uint8_t));
 
       memmove(data->depth, depth.data, (512*424)*4);
 

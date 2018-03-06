@@ -406,7 +406,7 @@ void startK2Stream()
 
     pc.readerGet(data);
 
-    cv::Mat RGB(1080,1920,CV_8UC4);
+    cv::Mat RGB(424,512,CV_8UC4);
     cv::Mat depth(424,512,CV_32FC1);
 
     //Problem: is it possible to read corrupted data? 
@@ -425,7 +425,6 @@ void startK2Stream()
     myframe->time_stamp_ = time;
 
     pc_camera.write(myframe);
-  
   }
   //DO not remove shared memory, server is in charge
 }
@@ -442,7 +441,7 @@ int main(int argc, char **argv) {
 
   if (camera_map[FLAGS_camera] == 3)
   {
-    dcamera = new Kinect2();
+    dcamera = new Kinect2(false);
   }
 
   switch(camera_map[FLAGS_camera])

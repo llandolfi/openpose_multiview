@@ -188,13 +188,24 @@ void DepthCamera::dump()
   std::cout << intrinsics_ << std::endl;
 }
 
-Kinect2::Kinect2()
-{
-  width_ = 1920;
-  height_ = 1080;
+Kinect2::Kinect2(bool full_hd)
+{ 
+  if (full_hd)
+  {
+    width_ = 1920;
+    height_ = 1080;
 
-  intrinsics_ = (cv::Mat_<double>(3,3) << 1039.7114637900604, 0.0, 937.6437462083773, 0.0, 1040.464051222892, 526.146628446275,0.0,0.0,1.0);
+    intrinsics_ = (cv::Mat_<double>(3,3) << 1039.7114637900604, 0.0, 937.6437462083773, 0.0, 1040.464051222892, 526.146628446275,0.0,0.0,1.0);
+  }
+  else 
+  {
+    width_ = 512;
+    height_ = 424;
+
+    intrinsics_ = (cv::Mat_<double>(3,3) << 368.096588, 0.0, 261.696594, 0.0, 368.096588, 202.522202,0.0,0.0,1.0);
+  }
 }
+
 
 std::string Kinect2::getResolution()
 {
