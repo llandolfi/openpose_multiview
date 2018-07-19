@@ -236,6 +236,7 @@ void PoseExtractor::destroy()
   outputfile3D_.close();
   timefile_.close();
   error_file_.close();
+  outputVideo_.release();
 }
 
 void PoseExtractor::setDepth(const cv::Mat & m)
@@ -317,8 +318,8 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
   }
 
   //remve the points with confidence less yhan a threshold
-  filterUncertain(0.40, cam0pnts);
-  filterUncertain(0.40, cam1pnts);
+  filterUncertain(0.1, cam0pnts);
+  filterUncertain(0.1, cam1pnts);
 
   std::map<int,int> correspondences;
   findCorrespondences(cam0pnts, cam1pnts, cam0pnts, cam1pnts);
@@ -364,7 +365,8 @@ void StereoPoseExtractor::triangulateCore(cv::Mat & cam0pnts, cv::Mat & cam1pnts
 
   proj_right = cam_->camera_left_.intrinsics_ * rototran;
 
-  cv::triangulatePoints(proj_left, proj_right, cam0pnts_undist, cam1pnts_undist, pnts3d);
+  //cv::triangulatePoints(proj_left, proj_right, cam0pnts_undist, cam1pnts_undist, pnts3d);
+  cv::triangulatePoints(proj_left, proj_right, cam0pnts, cam1pnts, pnts3d);
 
   finalpoints = cv::Mat(1,N,CV_64FC3);
 
@@ -618,7 +620,7 @@ void StereoPoseExtractor::visualize(bool * keep_on)
   cv::namedWindow("Side By Side", CV_WINDOW_AUTOSIZE);
   cv::imshow("Side By Side", sidebyside_out);
 
-  short k = cvWaitKey(2);
+  short k = cvWaitKey(200);
   if (k == 27)
   {
       *keep_on = false;

@@ -246,40 +246,55 @@ ZED::ZED(const std::string resolution) : resolution_(resolution)
 
   for (int i = 0; i < lines.size(); i ++)
   { 
-    if (lines[i].find(resolution_code_) < lines[i].size())
+    if (lines[i].find("LEFT_"+resolution_code_) < lines[i].size())
     { 
 
+      std::cout << lines[i] << std::endl;
       std::cout << "Found at " << lines[i] << std::endl;
       std::cout << lines[i].find(resolution_code_) << std::endl;
 
-      fx = getDouble(lines[i+1],"=");
-      fy = getDouble(lines[i+2],"=");
-      cx = getDouble(lines[i+3],"=");
-      cy = getDouble(lines[i+4],"=");
+      fx = getDouble(lines[i+3],"=");
+      fy = getDouble(lines[i+4],"=");
+      cx = getDouble(lines[i+1],"=");
+      cy = getDouble(lines[i+2],"=");
       
       intrinsics.at<double>(0,0) = fx;
       intrinsics.at<double>(0,2) = cx;
       intrinsics.at<double>(1,1) = fy;
       intrinsics.at<double>(1,2) = cy;
+      std::cout << "intrinsics left " << std::endl;
+      std::cout << intrinsics << std::endl;
 
       camera_left_.intrinsics_ = intrinsics.clone();
 
       dist_coeffs.at<double>(0,0) = getDouble(lines[i+5],"=");
       dist_coeffs.at<double>(0,1) = getDouble(lines[i+6],"=");
 
+      std::cout << "left distortion " << std::endl;
+      std::cout << dist_coeffs << std::endl;
       camera_left_.dist_ = dist_coeffs.clone();
 
-      i = i + 7;
+    }
 
-      fx = getDouble(lines[i+1],"=");
-      fy = getDouble(lines[i+2],"=");
-      cx = getDouble(lines[i+3],"=");
-      cy = getDouble(lines[i+4],"=");
+    if (lines[i].find("RIGHT_"+resolution_code_) < lines[i].size())
+    { 
+
+      std::cout << lines[i] << std::endl;
+      std::cout << "Found at " << lines[i] << std::endl;
+      std::cout << lines[i].find(resolution_code_) << std::endl;
+
+      fx = getDouble(lines[i+3],"=");
+      fy = getDouble(lines[i+4],"=");
+      cx = getDouble(lines[i+1],"=");
+      cy = getDouble(lines[i+2],"=");
       
       intrinsics.at<double>(0,0) = fx;
       intrinsics.at<double>(0,2) = cx;
       intrinsics.at<double>(1,1) = fy;
       intrinsics.at<double>(1,2) = cy;
+
+      std::cout << "intrinsics right " << std::endl;
+      std::cout << intrinsics << std::endl;
 
       camera_right_.intrinsics_ = intrinsics.clone();
 
@@ -288,7 +303,8 @@ ZED::ZED(const std::string resolution) : resolution_(resolution)
 
       camera_right_.dist_ = dist_coeffs.clone();
 
-      break;
+      std::cout << "right distortion " << std::endl;
+      std::cout << dist_coeffs << std::endl;
 
     }
   }

@@ -509,7 +509,6 @@ void associate(const std::vector<cv::Mat> & bodies_left, const std::vector<cv::M
 void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & sorted_left, cv::Mat & sorted_right)
 {
 
-  //TODO: divide the points in bodies -> every 18 points one body, get the center of each body
   std::vector<cv::Mat> bodies_left;
   std::vector<cv::Mat> bodies_right;
 
@@ -519,6 +518,7 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
   std::vector<int> minindsL;
   std::vector<int> minindsR;
 
+  //TODO: chabge algorithm -> use reprojection error for each trinagulation 
   associate(bodies_left, bodies_right, minindsL);
   associate(bodies_right, bodies_left, minindsR);
 
@@ -554,8 +554,8 @@ void findCorrespondences(const cv::Mat & pts1, const cv::Mat & pts2, cv::Mat & s
 
   for(std::map<int,int>::iterator it = corresp.begin(); it != corresp.end(); ++it)
   {
-   // std::cout << "associating left " << it->second << " with right " << it->first << std::endl;
-    //std::cout << "left size: " << bodies_left.size() << " right size: " << bodies_right.size() << std::endl;
+    std::cout << "associating left " << it->second << " with right " << it->first << std::endl;
+    std::cout << "left size: " << bodies_left.size() << " right size: " << bodies_right.size() << std::endl;
     proper_right.push_back(bodies_right[it->first]);
     proper_left.push_back(bodies_left[it->second]);
   }
